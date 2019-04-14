@@ -83,7 +83,7 @@ rb_vector_push(rb_vector_t *v, void *data)
  * 针对存储char类型做优化，避免多次调用rb_vector_push()
  */
 void
-rb_vector_push_str(rb_vector_t *v, char *s, size_t len)
+rb_vector_push_str(rb_vector_t *v, const char *s, size_t len)
 {
     if (v->max_size < v->size + len)
         rb_realloc_vector(v, len);
@@ -116,12 +116,12 @@ rb_vector_resize(rb_vector_t *v, size_t size)
 }
 
 /*
- * 在vector后面预分配一块内存
+ * 在vector后面预分配一块至少为size大小内存
  */
 void
 rb_vector_reserve(rb_vector_t *v, size_t size)
 {
-    if (size > v->max_size)
+    if (size > v->max_size - v->size)
         rb_realloc_vector(v, size - v->size);
 }
 

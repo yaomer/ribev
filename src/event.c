@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include "event.h"
@@ -41,7 +42,18 @@ rb_handle_read(rb_channel_t *chl)
 void
 rb_handle_write(rb_channel_t *chl)
 {
+    char *buf = rb_buffer_begin(chl->output);
+    size_t readable = rb_buffer_readable(chl->output);
 
+    if (rb_chl_is_writing(chl)) {
+        ssize_t n = write(chl->ev.ident, buf, readable);
+        if (n > 0) {
+            rb_buffer_update_readidx(chl->output, n);
+            if (rb_buffer_readable(chl->output) == 0)
+                rb_chl_disable_write(chl);
+        } else
+            ;
+    }
 }
 
 void

@@ -20,7 +20,7 @@ rb_get_msglen(rb_buffer_t *b)
  * 将[char *]打包成[buffer]，添加消息长度字段。
  */
 void
-rb_pack_add_len(rb_buffer_t *b, char *s, size_t len)
+rb_pack_add_len(rb_buffer_t *b, const char *s, size_t len)
 {
     char msglen[RB_MSG_FIELD_SZ] = { 0 };
 
@@ -41,10 +41,15 @@ rb_unpack_with_len(rb_channel_t *chl)
         /* 如果能构造成一条完整的消息，就循环接收，直到不能构造成
          * 一条完整的消息。
          */
-        if (rb_buffer_readable(chl->input) >= len + RB_MSG_FIELD_SZ) {
+        ssize_t readable = rb_buffer_readable(chl->input);
+        if (readable >= len + RB_MSG_FIELD_SZ) {
             rb_buffer_update_readidx(chl->input, RB_MSG_FIELD_SZ);
             if (chl->msgcb)
                 chl->msgcb(chl, len);
+            /* 如果没读完这条消息，就丢掉剩余部分 */
+            if (rb_buffer_readable(chl->input) + len > readable)
+                rb_buffer_update_readidx(chl->input,
+                        rb_buffer_readable(chl->input) - len);
         } else
             /* 如果没有一条完整的消息，就直接跳出循环，等待从客户端接受到一条
              * 完整的消息。
@@ -59,8 +64,8 @@ rb_unpack_with_len(rb_channel_t *chl)
 static int
 rb_find_crlf(rb_buffer_t *b)
 {
-    char *p = strnstr(rb_buffer_begin(b), RB_CRLF_LEN,
-            rb_buffer_readable(b));
+    char *s = rb_buffer_begin(b);
+    char *p = strnstr(s, RB_CRLF, rb_buffer_readable(b));
     return p ? p - s : -1;
 }
 
@@ -72,11 +77,15 @@ rb_unpack_with_crlf(rb_channel_t *chl)
 {
     while (rb_buffer_readable(chl->input) >= RB_CRLF_LEN) {
         int crlf = rb_find_crlf(chl->input);
+        size_t readable = rb_buffer_readable(chl->input);
         /* 找到了[\r\n]就读取一行文本，否则就退出循环 */
         if (crlf >= 0) {
-            rb_buffer_update_readidx(chl->input, crlf + RB_CRLF_LEN);
             if (chl->msgcb)
                 chl->msgcb(chl, crlf);
+            if (rb_buffer_readable(chl->input) + crlf > readable)
+                rb_buffer_update_readidx(chl->input,
+                        rb_buffer_readable(chl->input) - crlf);
+            rb_buffer_update_readidx(chl->input, RB_CRLF_LEN);
         } else
             break;
     }
@@ -90,7 +99,7 @@ rb_send(rb_channel_t *chl, rb_buffer_t *b)
 {
     size_t readable = rb_buffer_readable(b);
     if (!rb_chl_is_writing(chl) && rb_buffer_readable(chl->output) == 0) {
-        ssize_t n = write(chl->fd, rb_buffer_begin(b), readable);
+        ssize_t n = write(chl->ev.ident, rb_buffer_begin(b), readable);
         if (n > 0) {
             if (n < readable) {
                 /* 没写完，将剩余的数据添加到[buffer]中，并注册EV_WRITE事件，

@@ -15,7 +15,7 @@
 #define RB_CRLF "\r\n"
 #define RB_CRLF_LEN 2
 
-void rb_pack_add_len(rb_buffer_t *b, char *s, size_t len);
+void rb_pack_add_len(rb_buffer_t *b, const char *s, size_t len);
 void rb_unpack_with_len(rb_channel_t *chl);
 void rb_unpack_with_crlf(rb_channel_t *chl);
 void rb_send(rb_channel_t *chl, rb_buffer_t *b);

@@ -23,7 +23,7 @@ typedef struct rb_vector {
 void *rb_vector_entry(rb_vector_t *v, size_t index);
 rb_vector_t *rb_vector_init(size_t typesize);
 void rb_vector_push(rb_vector_t *v, void *data);
-void rb_vector_push_str(rb_vector_t *v, char *s, size_t len);
+void rb_vector_push_str(rb_vector_t *v, const char *s, size_t len);
 void rb_vector_pop(rb_vector_t *v);
 void rb_vector_resize(rb_vector_t *v, size_t size);
 void rb_vector_reserve(rb_vector_t *v, size_t size);

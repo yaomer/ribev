@@ -2,6 +2,7 @@
 #define _RIBEV_CHANNEL_H
 
 #include "fwd.h"
+#include "event.h"
 
 typedef struct rb_channel {
     rb_evloop_t *loop;
@@ -16,14 +17,18 @@ typedef struct rb_channel {
     void (*unpackcb)(rb_channel_t *);
 } rb_channel_t;
 
-#define rb_chl_set_eventcb(chl, cb) ((chl)->eventcb = cb)
-#define rb_chl_set_readcb(chl, cb) ((chl)->readcb = cb)
-#define rb_chl_set_writecb(chl, cb) ((chl)->writecb = cb)
-#define rb_chl_set_msgcb(chl, cb) ((chl)->msgcb = cb)
-#define rb_chl_set_packcb(chl, cb) ((chl)->packcb = cb)
-#define rb_chl_set_unpackcb(chl, cb) ((chl)->unpackcb = cb)
+#define rb_chl_set_cb(chl, e, r, w, m, p, u) \
+    do { \
+        (chl)->eventcb = e; \
+        (chl)->readcb = r; \
+        (chl)->writecb = w; \
+        (chl)->msgcb = m; \
+        (chl)->packcb = p; \
+        (chl)->unpackcb = u; \
+    } while (0)
 
 rb_channel_t *rb_chl_init(rb_evloop_t *loop);
+void rb_chl_add(rb_channel_t *chl);
 int rb_chl_is_reading(rb_channel_t *chl);
 int rb_chl_is_writing(rb_channel_t *chl);
 void rb_chl_enable_read(rb_channel_t *chl);

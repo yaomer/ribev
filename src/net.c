@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
@@ -20,7 +21,7 @@ rb_thread_id(void)
 #elif __mac__
     return pthread_mach_thread_np(pthread_self());
 #else
-    ; /* error */
+    return -1; /* error */
 #endif
 }
 
@@ -79,6 +80,9 @@ rb_connect(int port, const char *addr)
     int connfd;
     struct sockaddr_in cliaddr;
     struct timeval tv;
+
+    if (signal(SIGPIPE, SIG_IGN) < 0)
+        ;
 
     if ((connfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
         ;

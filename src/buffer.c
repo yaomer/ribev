@@ -81,7 +81,7 @@ rb_buffer_read(rb_buffer_t *b, char *s, size_t n)
  * 向[buffer]中写入[s]中前[len]个字符
  */
 void
-rb_buffer_write(rb_buffer_t *b, char *s, size_t len)
+rb_buffer_write(rb_buffer_t *b, const char *s, size_t len)
 {
     rb_vector_push_str(b->buf, s, len);
     b->writeindex += len;
@@ -116,6 +116,13 @@ rb_read_fd(rb_buffer_t *b, int fd, int *perr)
     }
 
     return n;
+}
+
+void
+rb_buffer_clear(rb_buffer_t *b)
+{
+    rb_vector_resize(b->buf, 0);
+    b->readindex = b->writeindex = 0;
 }
 
 void

@@ -2,11 +2,12 @@
 #define _RIBEV_EVENT_H
 
 #include <sys/event.h>
+#include "fwd.h"
 
 enum RB_EV_TYPE {
-    RB_EV_READ  = EVFILT_READ,
-    RB_EV_WRITE = EVFILT_WRITE, 
-    RB_EV_ERROR = EVFILT_EXCEPT,
+    RB_EV_READ  = 0x01,
+    RB_EV_WRITE = 0x02, 
+    RB_EV_ERROR = 0x04, 
 };
 
 typedef struct rb_event {
@@ -16,9 +17,16 @@ typedef struct rb_event {
 } rb_event_t;
 
 #define rb_ev_set(ev, id, evs, revs) \
-    do { (ev)->ident = (id); \
-         (ev)->events = (evs); \ 
-         (ev)->revents = (revs) \
+    do { \
+        (ev)->ident = (id); \
+        (ev)->events = (evs); \
+        (ev)->revents = (revs); \
     } while (0)
+
+void rb_handle_error(rb_channel_t *chl);
+void rb_handle_close(rb_channel_t *chl);
+void rb_handle_read(rb_channel_t *chl);
+void rb_handle_write(rb_channel_t *chl);
+void rb_handle_event(rb_channel_t *chl);
 
 #endif /* _RIBEV_EVENT_H */

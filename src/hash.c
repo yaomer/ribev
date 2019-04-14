@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <assert.h>
 #include <string.h>
 #include "alloc.h"
 #include "hash.h"
@@ -20,7 +21,7 @@
 static struct hash_node **
 rb_alloc_buckets(size_t size)
 {
-    struct hash_node **_h = rb_malloc(size * sizeof(struct hash_node *));
+    struct hash_node **_h = rb_calloc(size, sizeof(struct hash_node *));
     return _h;
 }
 
@@ -98,9 +99,15 @@ rb_rehash(rb_hash_t *h)
     h->buckets = rb_alloc_buckets(h->hashsize);
 
     for (int i = 0; i < bsize; i++) {
+        /* @@@bug records：之前rb_alloc_buckets()没有执行对buckets的初始化，
+         * 所以导致np = b[i]可能指向未知内存，即成为一个野指针。@@@
+         */
         struct hash_node *np = b[i];
-        for ( ; np; np = np->next)
+        while (np) {
+            struct hash_node *tmp = np->next;
             __insert(h, np);
+            np = tmp;
+        }
     }
     rb_free(b);
 }
