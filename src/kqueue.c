@@ -18,7 +18,7 @@
 #define RB_KQ_INIT_NEVENTS 64
 
 typedef struct rb_kqueue {
-    int kq;
+    int kqfd;
     int nevents;
     int added_events;
     rb_vector_t *evlist;
@@ -32,7 +32,7 @@ rb_kqueue_init(void)
 {
     rb_kqueue_t *k = rb_malloc(sizeof(rb_kqueue_t));
 
-    k->kq = kqueue();
+    k->kqfd = kqueue();
     k->added_events = 0;
     k->nevents = RB_KQ_INIT_NEVENTS;
     k->evlist = rb_vector_init(sizeof(struct kevent));
@@ -60,7 +60,7 @@ rb_kqueue_add(void *arg, rb_event_t *ev)
         }
     } else if (ev->events & RB_EV_WRITE)
         EV_SET(&kev, ev->ident, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-    if (kevent(k->kq, &kev, 1, NULL, 0, NULL) < 0)
+    if (kevent(k->kqfd, &kev, 1, NULL, 0, NULL) < 0)
         rb_log_error("kevent");
 }
 
@@ -73,7 +73,7 @@ rb_kqueue_del(void *arg, rb_event_t *ev)
         EV_SET(&kev, ev->ident, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     else if (ev->events & RB_EV_WRITE)
         EV_SET(&kev, ev->ident, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-    if (kevent(k->kq, &kev, 1, NULL, 0, NULL) < 0)
+    if (kevent(k->kqfd, &kev, 1, NULL, 0, NULL) < 0)
         rb_log_error("kevent");
 }
 
@@ -88,9 +88,9 @@ rb_kqueue_dispatch(rb_evloop_t *loop, void *arg, int64_t timeout)
     if (timeout > 0) {
         tsp.tv_sec = timeout / 1000;
         tsp.tv_nsec = (timeout % 1000) * 1000 * 1000;
-        nready = kevent(k->kq, NULL, 0, evlist, k->nevents, &tsp);
+        nready = kevent(k->kqfd, NULL, 0, evlist, k->nevents, &tsp);
     } else
-        nready = kevent(k->kq, NULL, 0, evlist, k->nevents, NULL);
+        nready = kevent(k->kqfd, NULL, 0, evlist, k->nevents, NULL);
 
     if (nready > 0) {
         for (int i = 0; i < nready; i++) {
@@ -107,6 +107,7 @@ rb_kqueue_dealloc(void *arg)
 {
     rb_kqueue_t *k = (rb_kqueue_t *)arg;
     rb_vector_destroy(&k->evlist);
+    close(k->kqfd);
     rb_free(k);
 }
 
