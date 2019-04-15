@@ -6,6 +6,15 @@
 #include "channel.h"
 #include "hash.h"
 #include "evloop.h"
+#include "logger.h"
+
+const char *event_str[] = {
+    0,
+    "RB_EV_READ",
+    "RB_EV_WRITE",
+    0,
+    "RB_EV_ERROR",
+};
 
 void
 rb_handle_error(rb_channel_t *chl)
@@ -13,7 +22,7 @@ rb_handle_error(rb_channel_t *chl)
     socklen_t err;
     socklen_t len = sizeof(err);
     if (getsockopt(chl->ev.ident, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
-        ;
+        rb_log_warn("fd=%d, %d", chl->ev.ident, err);
 }
 
 void
@@ -21,6 +30,7 @@ rb_handle_close(rb_channel_t *chl)
 {
     rb_hash_delete(chl->loop->chlist, chl->ev.ident);
     close(chl->ev.ident);
+    rb_log_debug("fd=%d closed", chl->ev.ident);
 }
 
 void
@@ -29,6 +39,7 @@ rb_handle_read(rb_channel_t *chl)
     int err;
     ssize_t n = rb_read_fd(chl->input, chl->ev.ident, &err);
 
+    rb_log_debug("reads %zd bytes from fd=%d", n, chl->ev.ident);
     if (n > 0) {
         if (chl->unpackcb)
             chl->unpackcb(chl);
@@ -47,12 +58,13 @@ rb_handle_write(rb_channel_t *chl)
 
     if (rb_chl_is_writing(chl)) {
         ssize_t n = write(chl->ev.ident, buf, readable);
-        if (n > 0) {
+        rb_log_debug("writes %zd bytes to fd=%d", n, chl->ev.ident);
+        if (n >= 0) {
             rb_buffer_update_readidx(chl->output, n);
             if (rb_buffer_readable(chl->output) == 0)
                 rb_chl_disable_write(chl);
         } else
-            ;
+            rb_log_error("write");
     }
 }
 

@@ -1,3 +1,7 @@
+#include "config.h"
+
+#ifdef RB_HAVE_KQUEUE
+
 #include <stdio.h>
 #include <sys/event.h>
 #include <sys/time.h>
@@ -9,6 +13,7 @@
 #include "hash.h"
 #include "channel.h"
 #include "queue.h"
+#include "logger.h"
 
 #define RB_KQ_INIT_NEVENTS 64
 
@@ -56,7 +61,7 @@ rb_kqueue_add(void *arg, rb_event_t *ev)
     } else if (ev->events & RB_EV_WRITE)
         EV_SET(&kev, ev->ident, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
     if (kevent(k->kq, &kev, 1, NULL, 0, NULL) < 0)
-        ;
+        rb_log_error("kevent");
 }
 
 static void
@@ -69,18 +74,23 @@ rb_kqueue_del(void *arg, rb_event_t *ev)
     else if (ev->events & RB_EV_WRITE)
         EV_SET(&kev, ev->ident, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
     if (kevent(k->kq, &kev, 1, NULL, 0, NULL) < 0)
-        ;
+        rb_log_error("kevent");
 }
 
 static int
 rb_kqueue_dispatch(rb_evloop_t *loop, void *arg, int64_t timeout)
 {
     rb_kqueue_t *k = (rb_kqueue_t *)arg;
-    struct timespec tsp;
     struct kevent *evlist = rb_kqueue_entry(k, 0);
-    tsp.tv_sec = timeout / 1000;
-    tsp.tv_nsec = (timeout % 1000) * 1000 * 1000;
-    int nready = kevent(k->kq, NULL, 0, evlist, k->nevents, &tsp);
+    struct timespec tsp;
+    int nready;
+
+    if (timeout > 0) {
+        tsp.tv_sec = timeout / 1000;
+        tsp.tv_nsec = (timeout % 1000) * 1000 * 1000;
+        nready = kevent(k->kq, NULL, 0, evlist, k->nevents, &tsp);
+    } else
+        nready = kevent(k->kq, NULL, 0, evlist, k->nevents, NULL);
 
     if (nready > 0) {
         for (int i = 0; i < nready; i++) {
@@ -107,3 +117,5 @@ const rb_evop_t kqops = {
     rb_kqueue_dispatch,
     rb_kqueue_dealloc,
 };
+
+#endif /* RB_HAVE_KQUEUE */

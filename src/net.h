@@ -1,6 +1,8 @@
 #ifndef _RIBEV_NET_H
 #define _RIBEV_NET_H
 
+#define RB_LISTENQ 1024
+
 long rb_thread_id(void);
 void rb_set_nonblock(int fd);
 void rb_socketpair(int *fd);

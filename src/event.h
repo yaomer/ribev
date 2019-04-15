@@ -10,6 +10,8 @@ enum RB_EV_TYPE {
     RB_EV_ERROR = 0x04, 
 };
 
+extern const char *event_str[];
+
 typedef struct rb_event {
     int ident;
     int events;

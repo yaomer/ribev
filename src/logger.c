@@ -12,15 +12,16 @@
 #include <sys/dir.h>
 #include <errno.h>
 #include "evloop.h"
+#include "timer.h"
 #include "logger.h"
 #include "vector.h"
 #include "buffer.h"
 #include "lock.h"
 #include "net.h"
 
-char filename[PATH_MAX + 1];
+char file[PATH_MAX + 1];
 
-rb_log_t *rb_log;
+rb_log_t *_log;
 
 static void
 rb_log_quit(char *fmt, ...)
@@ -31,34 +32,41 @@ rb_log_quit(char *fmt, ...)
     vfprintf(stderr, fmt, ap);
     fprintf(stderr, "\n");
     va_end(ap);
-    pthread_exit(NULL);
+    exit(1);
 }
 
+/*
+ * 获取当前时间的字符串表示，精确到ms
+ */
 char *
-rb_get_time_fmtstr(int64_t ms, char *buf, int len)
+rb_get_timestr(int64_t ms, char *buf, size_t len)
 {
     struct tm tm;
     time_t seconds = ms / 1000;
     gmtime_r(&seconds, &tm);
-    snprintf(buf, len, "%4d-%02d-%02d-%02d:%02d:%02d",
+    snprintf(buf, len, "%4d-%02d-%02d-%02d:%02d:%02d.%04lld",
             tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-            tm.tm_hour, tm.tm_min, tm.tm_sec);
+            tm.tm_hour, tm.tm_min, tm.tm_sec, ms % 1000);
     return buf;
 }
 
+/*
+ * 在当前目录下创建[.log]目录，以后所有日志文件将在
+ * 该目录下创建。
+ */
 static void
 rb_log_creat_dir(void)
 {
     DIR *dir = opendir(".log");
 
-    if (!dir && mkdir(".log", GV_LOG_DIR_MODE) < 0)
+    if (!dir && mkdir(".log", RB_LOG_DIR_MODE) < 0)
         rb_log_quit("mkdir error");
     if (dir)
         closedir(dir);
 }
 
 /*
- * filename[yy-mm-dd.pid.log]
+ * 创建一个日志文件，格式：[yy-mm-dd.pid.log]
  */
 static int
 rb_log_creat_file(void)
@@ -66,58 +74,37 @@ rb_log_creat_file(void)
     int fd;
     size_t len;
 
-    bzero(filename, sizeof(filename));
-    strcpy(filename, ".log/");
-    rb_get_time_fmtstr(rb_now(), filename + 5, 11);
-    len = strlen(filename);
-    snprintf(filename + len, PATH_MAX - len, ".%ld.log", (long)getpid());
+    bzero(file, sizeof(file));
+    strcpy(file, ".log/");
 
-    if ((fd = open(filename, GV_LOG_FILE_OPEN_MODE, GV_LOG_FILE_MODE)) < 0)
+    rb_get_timestr(rb_now(), file + 5, 11);
+    len = strlen(file);
+    snprintf(file + len, PATH_MAX - len, ".%ld.log", (long)getpid());
+
+    if ((fd = open(file, RB_LOG_FILE_OPEN_MODE, RB_LOG_FILE_MODE)) < 0)
         rb_log_quit("open error");
 
     return fd;
 }
 
-static void
-rb_log_wakeup(void **argv)
-{
-    rb_lock(&_log->mutex);
-    _log->wakeup = 1;
-    rb_unlock(&_log->mutex);
-    rb_notify(&_log->cond);
-}
-
+/*
+ * 将日志消息写到[buffer]中
+ */
 static void
 rb_log_write_to_buffer(char *s)
 {
     rb_lock(&_log->mutex);
     rb_buffer_write(_log->buf, s, strlen(s));
-    rb_unlock(&_log->mutex);
-    if (GV_BUFFER_READABLE(_log->buf) >= GV_LOG_BUFSIZE)
+    if (rb_buffer_readable(_log->buf) >= RB_LOG_BUFSIZE) {
+        rb_unlock(&_log->mutex);
         rb_notify(&_log->cond);
+    } else
+        rb_unlock(&_log->mutex);
 }
 
 /*
- * 将[log buffer]中的数据全部写到fd中
+ * 将[log buffer]中的数据写到本地文件中。
  */
-static void
-rb_log_write_fd(int fd)
-{
-    ssize_t n;
-    size_t readable = GV_BUFFER_READABLE(_log->buf);
-    char *buf = GV_BUFFER_BEGIN(_log->buf);
-
-    while ((n = write(fd, buf, readable)) < readable) {
-        if (n < 0)
-            rb_log_quit("write error");
-        else {
-            readable -= n;
-            rb_buffer_update_ridx(_log->buf, n);
-        }
-    }
-    rb_buffer_update_ridx(_log->buf, n);
-}
-
 static void *
 rb_log_write_to_file(void *arg)
 {
@@ -127,16 +114,17 @@ rb_log_write_to_file(void *arg)
     while (1) {
         rb_lock(&_log->mutex);
         while (!_log->quit && !_log->wakeup &&
-                GV_BUFFER_READABLE(_log->buf) < GV_LOG_BUFSIZE)
+                rb_buffer_readable(_log->buf) < RB_LOG_BUFSIZE)
             rb_wait(&_log->cond, &_log->mutex);
 
-        if (lstat(filename, &statbuf) < 0)
-            rb_log_quit("lstat error for %s", filename);
-        if (statbuf.st_size > GV_LOG_FILESIZE) {
+        if (lstat(file, &statbuf) < 0)
+            rb_log_quit("lstat error for %s", file);
+        if (statbuf.st_size > RB_LOG_FILESIZE) {
             close(fd);
             fd = rb_log_creat_file();
         }
-        rb_log_write_fd(fd);
+
+        write(fd, rb_buffer_begin(_log->buf), rb_buffer_readable(_log->buf));
 
         if (_log->quit) {
             rb_unlock(&_log->mutex);
@@ -149,22 +137,37 @@ rb_log_write_to_file(void *arg)
 }
 
 /*
- * 每隔1秒冲洗一次[log buffer]
+ * 唤醒日志线程
  */
-void
-rb_log_flush(Evloop *loop)
+static void
+rb_log_wakeup(void **argv)
 {
-    Task *task = rb_alloc_task(0);
-    task->callback = rb_log_wakeup;
-    rb_run_every(loop, 1000, task);
+    rb_lock(&_log->mutex);
+    _log->wakeup = 1;
+    rb_unlock(&_log->mutex);
+    rb_notify(&_log->cond);
 }
 
+/*
+ * 每隔3秒flush一次[log buffer]
+ */
+void
+rb_log_flush(rb_evloop_t *loop)
+{
+    rb_task_t *t = rb_alloc_task(0);
+    t->callback = rb_log_wakeup;
+    rb_run_every(loop, 1000 * 3, t);
+}
+
+/*
+ * 由于logger是全局共享的，所以每个进程只能持有一个logger
+ */
 void
 rb_log_init(void)
 {
     if (_log)
         rb_log_quit("more than one log in process");
-    assert(_log = malloc(sizeof(Log)));
+    assert(_log = malloc(sizeof(rb_log_t)));
     _log->buf = rb_buffer_init();
     _log->quit = 0;
     _log->mask = 0;
@@ -176,61 +179,49 @@ rb_log_init(void)
 }
 
 /*
- * fmt[[level] [time] [tid] [file] [line] [msg]]
+ * 构造日志消息，格式：[level][time][tid][file][line][msg]
  */
 static void
-rb_log_fmt(char *level, const char *_FILE, int _LINE,
-        char *fmt, va_list ap)
+rb_log_fmt(const char *level, const char *_FILE, int _LINE,
+        const char *fmt, va_list ap)
 {
     ssize_t len;
-    char buf[GV_LOG_BUFSIZE + 2];
+    char buf[RB_LOG_BUFSIZE + 2];
 
-    snprintf(buf, GV_LOG_BUFSIZE, "%-5s %s ", level,
-            rb_get_time_fmtstr(rb_now(), buf + 6, GV_LOG_BUFSIZE - 6));
+    snprintf(buf, RB_LOG_BUFSIZE, "%-5s %s ", level,
+            rb_get_timestr(rb_now(), buf + 6, RB_LOG_BUFSIZE - 6));
     len = strlen(buf);
-    snprintf(buf + len, GV_LOG_BUFSIZE - len, "%ld %s:%d ",
+    snprintf(buf + len, RB_LOG_BUFSIZE - len, "%ld %s:%d ",
             rb_thread_id(), _FILE, _LINE);
     len = strlen(buf);
-    vsnprintf(buf + len, GV_LOG_BUFSIZE - len, fmt, ap);
+    vsnprintf(buf + len, RB_LOG_BUFSIZE - len, fmt, ap);
     strcat(buf, "\n");
     rb_log_write_to_buffer(buf);
 }
 
+static const char *log_str[] = {
+    0,
+    "DEBUG",
+    "WARN",
+    0,
+    "ERROR",
+};
+
 void
-rb_log_debug(const char *_FILE, int _LINE, char *fmt, ...)
+rb_log_output(int level, const char *_FILE, int _LINE,
+        const char *fmt, ...)
 {
     va_list ap;
 
-    if (!_log || (_log->mask & LOG_DEBUG))
+    if (!_log)
+        return;
+    if (_log->mask & level)
         return;
     va_start(ap, fmt);
-    rb_log_fmt("DEBUG", _FILE, _LINE, fmt, ap);
+    rb_log_fmt(log_str[level], _FILE, _LINE, fmt, ap);
     va_end(ap);
-}
-
-void
-rb_log_warn(const char *_FILE, int _LINE, char *fmt, ...)
-{
-    va_list ap;
-
-    if (!_log || (_log->mask & LOG_WARN))
-        return;
-    va_start(ap, fmt);
-    rb_log_fmt("WARN", _FILE, _LINE, fmt, ap);
-    va_end(ap);
-}
-
-void
-rb_log_error(const char *_FILE, int _LINE, char *fmt, ...)
-{
-    va_list ap;
-
-    if (!_log || (_log->mask & LOG_ERROR))
-        return;
-    va_start(ap, fmt);
-    rb_log_fmt("ERROR", _FILE, _LINE, fmt, ap);
-    va_end(ap);
-    exit(1);
+    if (level & RB_LOG_ERROR)
+        exit(1);
 }
 
 void
@@ -248,7 +239,7 @@ rb_log_unset_mask(int level)
 void
 rb_log_ban(void)
 {
-    rb_log_set_mask(LOG_DEBUG | LOG_WARN | LOG_ERROR);
+    rb_log_set_mask(RB_LOG_DEBUG | RB_LOG_WARN | RB_LOG_ERROR);
 }
 
 void

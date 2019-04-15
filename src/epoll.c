@@ -1,3 +1,7 @@
+#include "config.h"
+
+#ifdef RB_HAVE_EPOLL
+
 #include "evloop.h"
 #include "event.h"
 #include "evop.h"
@@ -39,3 +43,5 @@ const rb_evop_t epops = {
     rb_epoll_dispatch,
     rb_epoll_dealloc,
 };
+
+#endif /* RB_HAVE_EPOLL */

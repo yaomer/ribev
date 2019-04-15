@@ -13,5 +13,7 @@ typedef struct rb_channel rb_channel_t;
 typedef struct rb_evloop rb_evloop_t;
 typedef struct rb_event rb_event_t;
 typedef struct rb_evop rb_evop_t;
+typedef struct rb_task rb_task_t;
+typedef struct rb_timer rb_timer_t;
 
 #endif /* _RIBEV_FWD_H */

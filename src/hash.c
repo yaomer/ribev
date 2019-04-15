@@ -100,7 +100,8 @@ rb_rehash(rb_hash_t *h)
 
     for (int i = 0; i < bsize; i++) {
         /* @@@bug records：之前rb_alloc_buckets()没有执行对buckets的初始化，
-         * 所以导致np = b[i]可能指向未知内存，即成为一个野指针。@@@
+         * 所以导致np = b[i]可能指向未知内存，即成为一个野指针。
+         * 真是让我好找，哼！@@@
          */
         struct hash_node *np = b[i];
         while (np) {
