@@ -8,6 +8,7 @@ typedef struct rb_evop {
     void *(*init)(void);    
     void (*add)(void *, rb_event_t *);
     void (*del)(void *, rb_event_t *);
+    void (*remove)(void *, int);
     int (*dispatch)(rb_evloop_t *, void *, int64_t);
     void (*dealloc)(void *);
 } rb_evop_t;

@@ -7,7 +7,7 @@
 #include "buffer.h"
 #include "task.h"
 #include "timer.h"
-#include "logger.h"
+#include "log.h"
 
 void
 msg(rb_channel_t *chl, size_t len)
@@ -20,7 +20,7 @@ msg(rb_channel_t *chl, size_t len)
     rb_send(chl, b);
     rb_buffer_destroy(&b);
     static int i = 0;
-    /* printf("%.2f\n", ++i * len * 1.0 / 1000000); */
+    printf("%.2f\n", ++i * len * 1.0 / 1000000);
 }
 
 int listenfd;
@@ -34,6 +34,7 @@ acp(rb_channel_t *chl)
         rb_chl_set_cb(ch, rb_handle_event, rb_handle_read, rb_handle_write, msg, rb_pack_add_len, rb_unpack_with_len);
         rb_chl_add(ch);
         rb_chl_enable_read(ch);
+        printf("%d connected\n", ch->ev.ident);
     } else {
         rb_handle_read(chl);
     }
@@ -53,6 +54,7 @@ main(void)
     rb_channel_t *ch = rb_chl_init(l);
     ch->ev.ident = rb_listen(6000);
     listenfd = ch->ev.ident;
+    printf("listenfd %d\n", listenfd);
     rb_chl_set_cb(ch, rb_handle_event, acp, rb_handle_write, msg, rb_pack_add_len, rb_unpack_with_len);
     rb_chl_add(ch);
     rb_chl_enable_read(ch);

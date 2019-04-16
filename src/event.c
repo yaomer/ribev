@@ -6,15 +6,20 @@
 #include "channel.h"
 #include "hash.h"
 #include "evloop.h"
-#include "logger.h"
+#include "log.h"
 
-const char *event_str[] = {
-    0,
-    "RB_EV_READ",
-    "RB_EV_WRITE",
-    0,
-    "RB_EV_ERROR",
-};
+const char *
+rb_eventstr(int events)
+{
+    if (events == RB_EV_READ)
+        return "EV_READ";
+    else if (events == RB_EV_WRITE)
+        return "EV_WRITE";
+    else if (events == RB_EV_ERROR)
+        return "EV_ERROR";
+    else
+        return "none";
+}
 
 void
 rb_handle_error(rb_channel_t *chl)

@@ -12,7 +12,7 @@
 #include <sys/time.h>
 #include "config.h"
 #include "net.h"
-#include "logger.h"
+#include "log.h"
 
 long
 rb_thread_id(void)

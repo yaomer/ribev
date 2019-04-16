@@ -37,7 +37,7 @@ f(void *a)
     memset(s, 'c', 10240);
     s[10238] = '\n';
     s[10239] = '\0';
-    ch->packcb(b, s, strlen(s));
+    ch->packcb(b, s, 10239);
     rb_send(ch, b);
     rb_evloop_run(l);
     return 0;

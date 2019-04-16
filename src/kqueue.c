@@ -3,6 +3,7 @@
 #ifdef RB_HAVE_KQUEUE
 
 #include <stdio.h>
+#include <unistd.h>
 #include <sys/event.h>
 #include <sys/time.h>
 #include "alloc.h"
@@ -13,7 +14,7 @@
 #include "hash.h"
 #include "channel.h"
 #include "queue.h"
-#include "logger.h"
+#include "log.h"
 
 #define RB_KQ_INIT_NEVENTS 64
 
@@ -42,11 +43,18 @@ rb_kqueue_init(void)
 }
 
 /*
- * EVFILT_XXX之间不能进行按位与或运算来判断事件
+ * EVFILT_XXX被定义的常量值如下：
  * #define EVFILT_READ  (-1)
  * #define EVFILT_WRITE (-2)
+ * 所以它们之间不能进行按位与或运算。
+ * 正因为如此kqueue每次只返回单个事件，如可读或可写，而不会
+ * 返回同时可读可写。
  */
 
+/*
+ * kqueue的EV_ADD可以重复添加事件，即除了添加事件之外，也可以
+ * 用来修改事件；而epoll只能用EPOLL_CTL_MOD来修改事件。
+ */
 static void
 rb_kqueue_add(void *arg, rb_event_t *ev)
 {
@@ -61,9 +69,13 @@ rb_kqueue_add(void *arg, rb_event_t *ev)
     } else if (ev->events & RB_EV_WRITE)
         EV_SET(&kev, ev->ident, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
     if (kevent(k->kqfd, &kev, 1, NULL, 0, NULL) < 0)
-        rb_log_error("kevent");
+        rb_log_warn("kevent");
 }
 
+/*
+ * kqueue的EV_DELETE只会删除指定fd上的事件，而epoll的EPOLL_CTL_DEL
+ * 则会删除指定的fd。
+ */
 static void
 rb_kqueue_del(void *arg, rb_event_t *ev)
 {
@@ -74,7 +86,28 @@ rb_kqueue_del(void *arg, rb_event_t *ev)
     else if (ev->events & RB_EV_WRITE)
         EV_SET(&kev, ev->ident, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
     if (kevent(k->kqfd, &kev, 1, NULL, 0, NULL) < 0)
-        rb_log_error("kevent");
+        rb_log_warn("kevent");
+}
+
+/*
+ * 不清楚如何移除一个fd，emmmm
+ */
+static void
+rb_kqueue_remove(void *arg, int fd)
+{
+    close(fd);
+}
+
+static void
+rb_kqueue_set_revents(rb_channel_t *chl, int filter)
+{
+    chl->ev.revents = 0;
+    if (filter == EVFILT_READ)
+        chl->ev.revents |= RB_EV_READ;
+    else if (filter == EVFILT_WRITE)
+        chl->ev.revents |= RB_EV_WRITE;
+    else if (filter == EVFILT_EXCEPT)
+        chl->ev.revents |= RB_EV_ERROR;
 }
 
 static int
@@ -95,7 +128,7 @@ rb_kqueue_dispatch(rb_evloop_t *loop, void *arg, int64_t timeout)
     if (nready > 0) {
         for (int i = 0; i < nready; i++) {
             rb_channel_t *chl = rb_search_chl(loop, evlist[i].ident);
-            chl->ev.revents = evlist[i].filter;
+            rb_kqueue_set_revents(chl, evlist[i].filter);
             rb_queue_push(loop->active_chls, chl);
         }
     }
@@ -115,6 +148,7 @@ const rb_evop_t kqops = {
     rb_kqueue_init,
     rb_kqueue_add,
     rb_kqueue_del,
+    rb_kqueue_remove,
     rb_kqueue_dispatch,
     rb_kqueue_dealloc,
 };

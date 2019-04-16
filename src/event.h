@@ -25,6 +25,7 @@ typedef struct rb_event {
         (ev)->revents = (revs); \
     } while (0)
 
+const char *rb_eventstr(int events);
 void rb_handle_error(rb_channel_t *chl);
 void rb_handle_close(rb_channel_t *chl);
 void rb_handle_read(rb_channel_t *chl);
