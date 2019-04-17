@@ -33,9 +33,7 @@ rb_handle_error(rb_channel_t *chl)
 void
 rb_handle_close(rb_channel_t *chl)
 {
-    rb_hash_delete(chl->loop->chlist, chl->ev.ident);
-    close(chl->ev.ident);
-    rb_log_debug("fd=%d closed", chl->ev.ident);
+    rb_chl_del(chl);
 }
 
 void

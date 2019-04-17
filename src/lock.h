@@ -3,6 +3,8 @@
 
 #include <pthread.h>
 
+#define rb_creat_thread(tid, func, arg) pthread_create(tid, NULL, func, arg)
+
 #define rb_lock_init(mutex) pthread_mutex_init(mutex, NULL)
 #define rb_lock(mutex) pthread_mutex_lock(mutex)
 #define rb_unlock(mutex) pthread_mutex_unlock(mutex)

@@ -40,9 +40,8 @@ rb_log_write_to_file(void *arg)
             fd = rb_log_creat_file();
         }
 
-        ssize_t readable = rb_buffer_readable(_log->buf);
-        write(fd, rb_buffer_begin(_log->buf), readable);
-        rb_buffer_update_readidx(_log->buf, readable);
+        ssize_t n = write(fd, rb_buffer_begin(_log->buf), rb_buffer_readable(_log->buf));
+        rb_buffer_update_readidx(_log->buf, n);
 
         if (_log->quit) {
             rb_unlock(&_log->mutex);
@@ -93,7 +92,7 @@ rb_log_init(void)
     rb_lock_init(&_log->mutex);
     rb_cond_init(&_log->cond);
     rb_log_creat_dir();
-    pthread_create(&_log->tid, NULL, rb_log_write_to_file, NULL);
+    rb_creat_thread(&_log->tid, rb_log_write_to_file, NULL);
 }
 
 void

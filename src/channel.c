@@ -6,6 +6,7 @@
 #include "evloop.h"
 #include "evop.h"
 #include "hash.h"
+#include "vector.h"
 #include "log.h"
 
 rb_channel_t *
@@ -21,6 +22,8 @@ rb_chl_init(rb_evloop_t *loop)
 
     return chl;
 }
+
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 void
 rb_chl_add(rb_channel_t *chl)

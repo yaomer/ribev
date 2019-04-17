@@ -6,6 +6,7 @@
 #include "evop.h"
 #include "evloop.h"
 #include "queue.h"
+#include "vector.h"
 #include "timer.h"
 #include "channel.h"
 #include "net.h"
@@ -42,6 +43,7 @@ rb_evloop_init(void)
     loop->chlist = rb_hash_init();
     loop->timer = rb_timer_init();
     loop->active_chls = rb_queue_init();
+    loop->ready_chls = rb_queue_init();
     loop->qtask = rb_queue_init();
     rb_lock_init(&loop->mutex);
     rb_socketpair(loop->wakefd);
@@ -63,7 +65,7 @@ rb_in_loop_thread(rb_evloop_t *loop)
 /*
  * 对于loop->wakefd，因为它是由socketpair()创建的，所以可以
  * 从wakefd[1]写，wakefd[0]读；也可以从wakefd[0]写，wakefd[1]读。
- * 只需保证不从同一端读写即可。这一点有别于unix传统的pipe。
+ * 只需保证不从同一端读写即可(否则会阻塞)。这一点有别于unix传统的pipe。
  * 不过我习惯上从wakefd[1]写，wakefd[0]读。
  */
 
@@ -100,9 +102,9 @@ rb_wakeup_add(rb_evloop_t *loop)
 
 /*
  * 利用这个函数我们可以很方便的在不同线程之间调配任务，
- * 它将所有的task(io线程或其他线程)都放到io线程中来执行。
- * 这样可以避免多个线程同时操纵一些共享资源(如socket fd)
- * 而产生的锁争用问题，也可以避免复杂的线程同步问题。
+ * 它将所有的task(io线程或其他线程)都放到io线程中来执行。这样可以避免
+ * 多个线程同时操纵一些共享资源(如socket fd)而产生的锁争用问题，
+ * 也可以避免复杂的线程同步问题。
  */
 void
 rb_run_in_loop(rb_evloop_t *loop, rb_task_t *task)
@@ -165,12 +167,29 @@ rb_run_io(rb_evloop_t *loop)
     }
 }
 
+/*
+ * 将就绪连接加入到[loop]中
+ */
+static void
+rb_add_ready_chls(rb_evloop_t *loop)
+{
+    rb_lock(&loop->mutex);
+    while (!rb_queue_is_empty(loop->ready_chls)) {
+        rb_channel_t *chl = rb_queue_front(loop->ready_chls);
+        rb_chl_add(chl);
+        rb_queue_pop(loop->ready_chls);
+    }
+    rb_unlock(&loop->mutex);
+}
+
 void
 rb_evloop_run(rb_evloop_t *loop)
 {
     rb_wakeup_add(loop);
 
     while (!loop->quit) {
+        rb_add_ready_chls(loop);
+
         int timeout = rb_timer_out(loop->timer);
         int nevents = loop->evsel->dispatch(loop, loop->evop, timeout);
 

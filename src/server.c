@@ -1,66 +1,58 @@
-#include <stdio.h>
+#include <stddef.h>
+#include "alloc.h"
+#include "server.h"
+#include "evll.h"
+#include "evthr.h"
 #include "evloop.h"
 #include "channel.h"
-#include "event.h"
-#include "net.h"
 #include "coder.h"
-#include "buffer.h"
-#include "task.h"
-#include "timer.h"
-#include "log.h"
+#include "net.h"
+#include "lock.h"
+#include "queue.h"
 
-void
-msg(rb_channel_t *chl, size_t len)
+rb_serv_t *
+rb_serv_init(int loops, int port)
 {
-    char s[len + 1];
-    rb_buffer_read(chl->input, s, len + 1);
+    rb_serv_t *serv = rb_malloc(sizeof(rb_serv_t));
 
-    rb_buffer_t *b = rb_buffer_init();
-    chl->packcb(b, s, len);
-    rb_send(chl, b);
-    rb_buffer_destroy(&b);
-    static int i = 0;
-    printf("%.2f\n", ++i * len * 1.0 / 1000000);
+    serv->port = port;
+    serv->evll = rb_evll_init(loops);
+    rb_evloop_t *loop = rb_evloop_init();
+    serv->mloop = *loop;
+    rb_free(loop);
+    rb_serv_set_cb(serv, NULL);
+
+    return serv;
 }
 
-int listenfd;
-
-void
-acp(rb_channel_t *chl)
+/*
+ * 接收一个[connfd]，然后分发给[evll]中的一个[loop]
+ */
+static void
+rb_serv_accept(rb_channel_t *chl)
 {
-    if (chl->ev.ident == listenfd) {
-        rb_channel_t *ch = rb_chl_init(chl->loop);
-        ch->ev.ident = rb_accept(chl->ev.ident);
-        rb_chl_set_cb(ch, rb_handle_event, rb_handle_read, rb_handle_write, msg, rb_pack_add_len, rb_unpack_with_len);
-        rb_chl_add(ch);
-        rb_chl_enable_read(ch);
-        printf("%d connected\n", ch->ev.ident);
-    } else {
-        rb_handle_read(chl);
-    }
+    rb_serv_t *serv = ((rb_serv_t *)((char *)chl->loop - offsetof(rb_serv_t, mloop)));
+    rb_evthr_t *evthr = rb_evll_get_nextloop(serv->evll);
+    rb_evloop_t *loop = evthr->loop;
+
+    rb_channel_t *ch = rb_chl_init(loop);
+    ch->ev.ident = rb_accept(chl->ev.ident);
+    rb_chl_set_cb(ch, rb_handle_event, rb_handle_read, rb_handle_write,
+            serv->msgcb, rb_pack_add_len, rb_unpack_with_len);
+
+    rb_lock(&loop->mutex);
+    rb_queue_push(loop->ready_chls, ch);
+    rb_wakeup(loop);
+    rb_unlock(&loop->mutex);
 }
 
 void
-xp(void **x)
+rb_serv_run(rb_serv_t *serv)
 {
-    printf("hello, world\n");
-}
-
-int
-main(void)
-{
-    rb_log_init();
-    rb_evloop_t *l = rb_evloop_init();
-    rb_channel_t *ch = rb_chl_init(l);
-    ch->ev.ident = rb_listen(6000);
-    listenfd = ch->ev.ident;
-    printf("listenfd %d\n", listenfd);
-    rb_chl_set_cb(ch, rb_handle_event, acp, rb_handle_write, msg, rb_pack_add_len, rb_unpack_with_len);
-    rb_chl_add(ch);
-    rb_chl_enable_read(ch);
-
-    /* rb_task_t *t = rb_alloc_task(0);
-    t->callback = xp;
-    rb_run_every(l, 100, t); */
-    rb_evloop_run(l);
+    rb_channel_t *chl = rb_chl_init(&serv->mloop);
+    chl->ev.ident = rb_listen(serv->port);
+    rb_chl_set_cb(chl, rb_handle_event, rb_serv_accept, NULL, NULL, NULL, NULL);
+    rb_chl_add(chl);
+    rb_evll_run(serv->evll);
+    rb_evloop_run(&serv->mloop);
 }

@@ -11,6 +11,7 @@ typedef struct rb_evloop {
     rb_hash_t *chlist;    
     rb_timer_t *timer;
     rb_queue_t *active_chls;
+    rb_queue_t *ready_chls;
     rb_queue_t *qtask;
     pthread_mutex_t mutex;
     int wakefd[2];

@@ -15,5 +15,7 @@ typedef struct rb_event rb_event_t;
 typedef struct rb_evop rb_evop_t;
 typedef struct rb_task rb_task_t;
 typedef struct rb_timer rb_timer_t;
+typedef struct rb_evthr rb_evthr_t;
+typedef struct rb_evll rb_evll_t;
 
 #endif /* _RIBEV_FWD_H */

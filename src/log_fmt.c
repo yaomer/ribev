@@ -74,8 +74,10 @@ rb_log_creat_file(void)
 static void
 rb_log_write_to_buffer(char *s)
 {
+    ssize_t len = strlen(s);
     rb_lock(&_log->mutex);
-    rb_buffer_write(_log->buf, s, strlen(s));
+    rb_buffer_move_forward(_log->buf, len);
+    rb_buffer_write(_log->buf, s, len);
     if (rb_buffer_readable(_log->buf) >= RB_LOG_BUFSIZE) {
         rb_unlock(&_log->mutex);
         rb_notify(&_log->cond);
