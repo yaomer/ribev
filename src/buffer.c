@@ -4,10 +4,13 @@
 #include <sys/uio.h>
 #include <unistd.h>
 #include <errno.h>
+#include "channel.h"
 #include "buffer.h"
 #include "vector.h"
 #include "hash.h"
+#include "evloop.h"
 #include "alloc.h"
+#include "task.h"
 
 /*
  * [buffer]初始化时的大小，由于我们在rb_read_fd()中巧妙
@@ -54,7 +57,7 @@ rb_buffer_move_forward(rb_buffer_t *b, size_t len)
     size_t writeable = rb_buffer_writeable(b);
     size_t prependable = rb_buffer_prependable(b);
 
-    if (len > writeable && len < prependable + writeable) {
+    if (len > writeable && len < prependable + readable) {
         memcpy(rb_vector_entry(b->buf, 0), rb_buffer_begin(b), readable);
         b->readindex = 0;
         b->writeindex = readable;
@@ -116,6 +119,67 @@ rb_read_fd(rb_buffer_t *b, int fd, int *perr)
     }
 
     return n;
+}
+
+/*
+ * 返回[\r\n]在[buffer]中第一次出现的位置。
+ */
+int
+rb_find_crlf(rb_buffer_t *b)
+{
+    char *s = rb_buffer_begin(b);
+    char *p = strnstr(s, "\r\n", rb_buffer_readable(b));
+    return p ? p - s : -1;
+}
+
+static void
+rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
+{
+    if (!rb_chl_is_writing(chl) && rb_buffer_readable(chl->output) == 0) {
+        ssize_t n = write(chl->ev.ident, s, len);
+        if (n > 0) {
+            if (n < len) {
+                /* 没写完，将剩余的数据添加到[output buffer]中，并注册RB_EV_WRITE事件，
+                 * 当fd变得可写时，再继续发送。
+                 */
+                rb_buffer_write(chl->output, s + n, len - n);
+                rb_buffer_update_readidx(chl->output, len - n);
+                rb_chl_enable_write(chl);
+            }
+        }
+    } else {
+        /* 如果有新到来的消息时，[output buffer]中还有未发完的数据，就将
+         * 新到来的消息追加到它的末尾，之后统一发送。(这样才能保证接收方
+         * 接收到消息的正确性)。
+         */
+        rb_buffer_move_forward(chl->output, len);
+        rb_buffer_write(chl->output, s, len);
+        rb_buffer_update_readidx(chl->output, len);
+    }
+}
+
+static void
+__rb_send_in_loop(void **argv)
+{
+    rb_channel_t *chl = (rb_channel_t *)argv[0];
+    char *s = (char *)argv[1];
+    size_t len = (size_t)argv[2];
+    rb_send_in_loop(chl, s, len);
+}
+
+void
+rb_send(rb_channel_t *chl, const char *s, size_t len)
+{
+    if (rb_in_loop_thread(chl->loop))
+        rb_send_in_loop(chl, s, len);
+    else {
+        rb_task_t *t = rb_alloc_task(3);
+        t->callback = __rb_send_in_loop;
+        t->argv[0] = chl;
+        t->argv[1] = (void *)s;
+        t->argv[2] = (void *)len;
+        rb_run_in_loop(chl->loop, t);
+    }
 }
 
 void

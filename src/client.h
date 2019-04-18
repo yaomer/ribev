@@ -8,14 +8,14 @@ typedef struct rb_cli {
     rb_evloop_t *loop;
     int port;
     char *addr;
-    void (*msgcb)(rb_channel_t *, size_t);
+    void (*msgcb)(rb_channel_t *);
     void (*concb)(rb_channel_t *);
 } rb_cli_t;
 
-#define rb_cli_set_cb(cli, msg, con) \
+#define rb_cli_set_cb(cli, m, c) \
     do { \
-        (cli)->msgcb = msg; \
-        (cli)->concb = con; \
+        (cli)->msgcb = m; \
+        (cli)->concb = c; \
     } while (0)
 
 rb_cli_t *rb_cli_init(int port, char *addr);

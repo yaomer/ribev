@@ -14,6 +14,5 @@ typedef struct rb_evop {
 } rb_evop_t;
 
 extern const rb_evop_t *evops[];
-extern const int8_t evopsnum;
 
 #endif /* _RIBEV_EVOP_H */

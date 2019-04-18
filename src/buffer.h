@@ -30,6 +30,8 @@ void rb_buffer_move_forward(rb_buffer_t *b, size_t len);
 void rb_buffer_read(rb_buffer_t *b, char *s, size_t n);
 void rb_buffer_write(rb_buffer_t *b, const char *s, size_t len);
 ssize_t rb_read_fd(rb_buffer_t *b, int fd, int *perr);
+int rb_find_crlf(rb_buffer_t *b);
+void rb_send(rb_channel_t *chl, const char *, size_t);
 void rb_buffer_clear(rb_buffer_t *b);
 void rb_buffer_destroy(rb_buffer_t **_b);
 

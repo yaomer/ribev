@@ -8,12 +8,12 @@ typedef struct rb_serv {
     int port;
     rb_evloop_t mloop;
     rb_evll_t *evll;
-    void (*msgcb)(rb_channel_t *, size_t);
+    void (*msgcb)(rb_channel_t *);
 } rb_serv_t;
 
-#define rb_serv_set_cb(serv, msg) \
+#define rb_serv_set_cb(serv, m) \
     do { \
-        (serv)->msgcb = msg; \
+        (serv)->msgcb = m; \
     } while (0)
 
 rb_serv_t *rb_serv_init(int loops, int port);

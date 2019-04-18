@@ -16,13 +16,16 @@
 #include "queue.h"
 #include "log.h"
 
+/*
+ * [evlist]的初始大小
+ */
 #define RB_KQ_INIT_NEVENTS 64
 
 typedef struct rb_kqueue {
     int kqfd;
-    int nevents;
-    int added_events;
-    rb_vector_t *evlist;
+    int nevents;   /* evlist的大小 */
+    int added_events;   /* 已被注册到kqueue中的事件个数 */
+    rb_vector_t *evlist;   /* 存放活跃的事件 */
 } rb_kqueue_t;
 
 #define rb_kqueue_entry(k, i) \
@@ -52,8 +55,7 @@ rb_kqueue_init(void)
  */
 
 /*
- * kqueue的EV_ADD可以重复添加事件，即除了添加事件之外，也可以
- * 用来修改事件；而epoll只能用EPOLL_CTL_MOD来修改事件。
+ * 注册一个新的[ev->ident]，或修改关联到[ev->ident]上的事件。
  */
 static void
 rb_kqueue_add(void *arg, rb_event_t *ev)
@@ -73,8 +75,7 @@ rb_kqueue_add(void *arg, rb_event_t *ev)
 }
 
 /*
- * kqueue的EV_DELETE只会删除指定fd上的事件，而epoll的EPOLL_CTL_DEL
- * 则会删除指定的fd。
+ * 删除关联到[ev->ident]上的事件。
  */
 static void
 rb_kqueue_del(void *arg, rb_event_t *ev)
@@ -90,7 +91,7 @@ rb_kqueue_del(void *arg, rb_event_t *ev)
 }
 
 /*
- * 不清楚如何移除一个fd，emmmm
+ * 从kqueue的内核关注事件列表中移除一个[fd]。
  */
 static void
 rb_kqueue_remove(void *arg, int fd)
@@ -98,6 +99,10 @@ rb_kqueue_remove(void *arg, int fd)
     close(fd);
 }
 
+/*
+ * 将kqueue的事件类型转换为我们自定义的事件类型，然后
+ * 返回给上层应用。
+ */
 static void
 rb_kqueue_set_revents(rb_channel_t *chl, int filter)
 {
@@ -110,6 +115,9 @@ rb_kqueue_set_revents(rb_channel_t *chl, int filter)
         chl->ev.revents |= RB_EV_ERROR;
 }
 
+/*
+ * 事件多路分发器。
+ */
 static int
 rb_kqueue_dispatch(rb_evloop_t *loop, void *arg, int64_t timeout)
 {

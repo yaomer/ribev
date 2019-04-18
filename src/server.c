@@ -5,7 +5,6 @@
 #include "evthr.h"
 #include "evloop.h"
 #include "channel.h"
-#include "coder.h"
 #include "net.h"
 #include "lock.h"
 #include "queue.h"
@@ -38,7 +37,7 @@ rb_serv_accept(rb_channel_t *chl)
     rb_channel_t *ch = rb_chl_init(loop);
     ch->ev.ident = rb_accept(chl->ev.ident);
     rb_chl_set_cb(ch, rb_handle_event, rb_handle_read, rb_handle_write,
-            serv->msgcb, rb_pack_add_len, rb_unpack_with_len);
+            serv->msgcb);
 
     rb_lock(&loop->mutex);
     rb_queue_push(loop->ready_chls, ch);
@@ -51,7 +50,7 @@ rb_serv_run(rb_serv_t *serv)
 {
     rb_channel_t *chl = rb_chl_init(&serv->mloop);
     chl->ev.ident = rb_listen(serv->port);
-    rb_chl_set_cb(chl, rb_handle_event, rb_serv_accept, NULL, NULL, NULL, NULL);
+    rb_chl_set_cb(chl, rb_handle_event, rb_serv_accept, NULL, NULL);
     rb_chl_add(chl);
     rb_evll_run(serv->evll);
     rb_evloop_run(&serv->mloop);

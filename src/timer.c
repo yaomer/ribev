@@ -176,7 +176,7 @@ __rb_timer_add(void **argv)
  * 在io线程添加timer
  */
 static void
-__rb_timer_run(rb_evloop_t *loop, rb_timestamp_t *tm)
+__rb_timer_add_in_loop(rb_evloop_t *loop, rb_timestamp_t *tm)
 {
     rb_task_t *t = rb_alloc_task(2);
     t->callback = __rb_timer_add;
@@ -199,7 +199,7 @@ rb_run_at(rb_evloop_t *loop, int64_t timeval, rb_task_t *t)
     tm->timeout = timeval - rb_now();
     tm->interval = 0;
     tm->task = t;
-    __rb_timer_run(loop, tm);
+    __rb_timer_add_in_loop(loop, tm);
 }
 
 /*
@@ -212,7 +212,7 @@ rb_run_after(rb_evloop_t *loop, int64_t timeout, rb_task_t *t)
     tm->timeout = timeout;
     tm->interval = 0;
     tm->task = t;
-    __rb_timer_run(loop, tm);
+    __rb_timer_add_in_loop(loop, tm);
 }
 
 /*
@@ -224,5 +224,5 @@ rb_run_every(rb_evloop_t *loop, int64_t interval, rb_task_t *t)
     rb_timestamp_t *tm = rb_alloc_timestamp();
     tm->timeout = tm->interval = interval;
     tm->task = t;
-    __rb_timer_run(loop, tm);
+    __rb_timer_add_in_loop(loop, tm);
 }

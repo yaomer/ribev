@@ -3,7 +3,6 @@
 #include "evloop.h"
 #include "channel.h"
 #include "net.h"
-#include "coder.h"
 
 rb_cli_t *
 rb_cli_init(int port, char *addr)
@@ -24,7 +23,7 @@ rb_cli_run(rb_cli_t *cli)
     rb_channel_t *chl = rb_chl_init(cli->loop);
     chl->ev.ident = rb_connect(cli->port, cli->addr);
     rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
-            cli->msgcb, rb_pack_add_len, rb_unpack_with_len);
+            cli->msgcb);
     rb_chl_add(chl);
     if (cli->concb)
         cli->concb(chl);

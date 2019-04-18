@@ -44,8 +44,8 @@ rb_handle_read(rb_channel_t *chl)
 
     rb_log_debug("reads %zd bytes from fd=%d", n, chl->ev.ident);
     if (n > 0) {
-        if (chl->unpackcb)
-            chl->unpackcb(chl);
+        if (chl->msgcb)
+            chl->msgcb(chl);
     } else if (n == 0) {
         rb_handle_close(chl);
     } else {

@@ -12,19 +12,15 @@ typedef struct rb_channel {
     void (*eventcb)(rb_channel_t *);
     void (*readcb)(rb_channel_t *);
     void (*writecb)(rb_channel_t *);
-    void (*msgcb)(rb_channel_t *, size_t);
-    void (*packcb)(rb_buffer_t *, const char *, size_t);
-    void (*unpackcb)(rb_channel_t *);
+    void (*msgcb)(rb_channel_t *);
 } rb_channel_t;
 
-#define rb_chl_set_cb(chl, e, r, w, m, p, u) \
+#define rb_chl_set_cb(chl, e, r, w, m) \
     do { \
         (chl)->eventcb = e; \
         (chl)->readcb = r; \
         (chl)->writecb = w; \
         (chl)->msgcb = m; \
-        (chl)->packcb = p; \
-        (chl)->unpackcb = u; \
     } while (0)
 
 rb_channel_t *rb_chl_init(rb_evloop_t *loop);

@@ -29,13 +29,7 @@ rb_evloop_init(void)
         __loop = loop;
 
     /* 选择合适的I/O多路复用机制 */
-    loop->evsel = NULL;
-    for (int i = 0; i < evopsnum; i++) {
-        if (evops[i]) {
-            loop->evsel = evops[i];
-            break;
-        }
-    }
+    loop->evsel = evops[0];
     if (!loop->evsel)
         rb_log_error("no supported I/O multiplexing");
 
@@ -95,7 +89,7 @@ rb_wakeup_add(rb_evloop_t *loop)
     rb_channel_t *chl = rb_chl_init(loop);
 
     chl->ev.ident = loop->wakefd[0];
-    rb_chl_set_cb(chl, rb_handle_event, rb_wakeup_read, NULL, NULL, NULL, NULL);
+    rb_chl_set_cb(chl, rb_handle_event, rb_wakeup_read, NULL, NULL);
     rb_chl_add(chl);
     rb_chl_enable_read(chl);
 }

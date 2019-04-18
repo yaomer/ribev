@@ -18,5 +18,3 @@ const rb_evop_t *evops[] = {
 #endif
     NULL,
 };
-
-const int8_t evopsnum = sizeof(evops) / sizeof(evops[0]);
