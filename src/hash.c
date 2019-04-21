@@ -1,3 +1,8 @@
+/*
+ * 一个简单的动态散列表，在[rehash]过程中可能会有所延迟，
+ * 如果对这点延迟不能容忍的话，可以使用线性散列作为改进
+ */
+
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
@@ -7,13 +12,13 @@
 /*
  * hash的初始大小
  */
-#define GV_HASH_INIT_SIZE 64
+#define RB_HASH_INIT_SIZE 64
 /*
  * 装载因子，我们在每次插入时都需要计算当前的装载因子lf，
- * 如果lf > GV_HASH_LOAD_FACTOR，就需要对hash进行扩张，
+ * 如果lf > RB_HAS_HASH_LOAD_FACTOR，就需要对hash进行扩张，
  * 从而保证高效的查找效率
  */
-#define GV_HASH_LOAD_FACTOR 0.75
+#define RB_HASH_LOAD_FACTOR 0.75
 
 /*
  * 分配一个size大小的bucket
@@ -40,7 +45,7 @@ rb_hash_init(void)
 {
     rb_hash_t *h = rb_malloc(sizeof(rb_hash_t));
 
-    h->hashsize = GV_HASH_INIT_SIZE;
+    h->hashsize = RB_HASH_INIT_SIZE;
     h->buckets = rb_alloc_buckets(h->hashsize);
     h->hashnums = 0;
     h->free_data = NULL;
@@ -123,7 +128,7 @@ rb_hash_insert(rb_hash_t *h, unsigned key, void *data)
     np->key = key;
     np->data = data;
 
-    if (rb_hash_lf(h) >= GV_HASH_LOAD_FACTOR)
+    if (rb_hash_lf(h) >= RB_HASH_LOAD_FACTOR)
         rb_rehash(h);
     __insert(h, np);
 }

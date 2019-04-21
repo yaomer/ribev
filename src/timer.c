@@ -1,3 +1,8 @@
+/*
+ * timer使用最小堆实现，可以保证添加和删除timer是O(log n)的，
+ * 访问最小timer则是O(1)的
+ */
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>

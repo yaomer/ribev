@@ -9,12 +9,12 @@
 typedef struct rb_evloop {
     /* evop指向一个[I/O Multiplexing]实例，这个值
      * 是在编译时决定的，所以它应该被声明为[void *]类型，
-     * 已接受所有可能的实例类型 */
+     * 以接受所有可能的实例类型 */
     void *evop;
     /* evsel指向一个函数指针数组，这个数组提供[evop]的
      * 具体操作 */
     const rb_evop_t *evsel;
-    /* chlist保存所有注册的chl，并且chl的生命期只有chlist决定，
+    /* chlist保存所有注册的chl，并且chl的生命期只由chlist决定，
      * 其他对象可以共享chl，即又有一个指向chl的指针，但绝不能
      * 销毁chl */
     rb_hash_t *chlist;    

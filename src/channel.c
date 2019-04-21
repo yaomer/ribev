@@ -46,8 +46,7 @@ rb_chl_enable_event(rb_channel_t *chl , int events)
     rb_event_t ev;
     chl->ev.events |= events;
     /* ev.events被设置为当前待操作的事件,
-     * ev.revents被设置为当前已关注的所有事件。
-     */
+     * ev.revents被设置为当前已关注的所有事件 */
     rb_ev_set(&ev, chl->ev.ident, events, chl->ev.events);
     chl->loop->evsel->add(chl->loop->evop, &ev);
     rb_log_debug("fd=%d enable %s", chl->ev.ident, rb_eventstr(events));

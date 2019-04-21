@@ -1,3 +1,7 @@
+/*
+ * [buffer]借用[vector]来进行内存管理，所以实现很简单
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>

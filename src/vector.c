@@ -1,3 +1,7 @@
+/*
+ * 一个简单的动态数组，实现了类似[C++ vector]中的一些功能
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include "alloc.h"

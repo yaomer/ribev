@@ -1,3 +1,6 @@
+#ifdef RB_HAVE_GETTID
+#include <sys/syscall.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
