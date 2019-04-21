@@ -32,5 +32,6 @@ void rb_chl_enable_read(rb_channel_t *chl);
 void rb_chl_enable_write(rb_channel_t *chl);
 void rb_chl_disable_read(rb_channel_t *chl);
 void rb_chl_disable_write(rb_channel_t *chl);
+void rb_free_chl(void *arg);
 
 #endif /* _RIBEV_CHANNEL_H */

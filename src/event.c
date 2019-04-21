@@ -77,12 +77,12 @@ rb_handle_event(rb_channel_t *chl)
     if (chl->ev.revents & RB_EV_ERROR) {
         rb_handle_error(chl);
     }
-    if (chl->ev.revents & RB_EV_READ) {
-        if (chl->readcb)
-            chl->readcb(chl);
-    }
     if (chl->ev.revents & RB_EV_WRITE) {
         if (chl->writecb)
             chl->writecb(chl);
+    }
+    if (chl->ev.revents & RB_EV_READ) {
+        if (chl->readcb)
+            chl->readcb(chl);
     }
 }

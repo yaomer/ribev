@@ -2,7 +2,7 @@
 #define _RIBEV_CONFIG_H
 
 #if defined(__APPLE__)
-// #define RB_HAVE_KQUEUE 1
+#define RB_HAVE_KQUEUE 1
 #define RB_HAVE_POLL 1
 #define RB_HAVE_PTHREAD_MACH_THREAD_NP 1
 #endif

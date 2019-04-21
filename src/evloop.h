@@ -2,6 +2,7 @@
 #define _RIBEV_EVLOOP_H
 
 #include <pthread.h>
+#include <stdatomic.h>
 #include "fwd.h"
 #include "hash.h"
 
@@ -15,7 +16,7 @@ typedef struct rb_evloop {
     rb_queue_t *qtask;
     pthread_mutex_t mutex;
     int wakefd[2];
-    int quit;
+    atomic_int quit;
     int tid;
 } rb_evloop_t;
 
@@ -24,6 +25,7 @@ typedef struct rb_evloop {
 
 rb_evloop_t *rb_evloop_init(void);
 void rb_evloop_run(rb_evloop_t *loop);
+void rb_evloop_quit(rb_evloop_t *loop);
 
 int rb_in_loop_thread(rb_evloop_t *loop);
 void rb_wakeup(rb_evloop_t *loop);

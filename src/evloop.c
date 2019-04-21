@@ -29,12 +29,12 @@ rb_evloop_init(void)
         __loop = loop;
 
     /* 选择合适的I/O多路复用机制 */
-    loop->evsel = evops[0];
-    if (!loop->evsel)
+    if (!(loop->evsel = evops[0]))
         rb_log_error("no supported I/O multiplexing");
 
     loop->evop = loop->evsel->init();
     loop->chlist = rb_hash_init();
+    rb_hash_set_free(loop->chlist, rb_free_chl);
     loop->timer = rb_timer_init();
     loop->active_chls = rb_queue_init();
     loop->ready_chls = rb_queue_init();
@@ -154,7 +154,7 @@ static void
 rb_run_io(rb_evloop_t *loop)
 {
     while (!rb_queue_is_empty(loop->active_chls)) {
-        rb_channel_t *chl = (rb_channel_t *)rb_queue_front(loop->active_chls);
+        rb_channel_t *chl = rb_queue_front(loop->active_chls);
         if (chl->eventcb)
             chl->eventcb(chl);
         rb_queue_pop(loop->active_chls);
@@ -174,6 +174,20 @@ rb_add_ready_chls(rb_evloop_t *loop)
         rb_queue_pop(loop->ready_chls);
     }
     rb_unlock(&loop->mutex);
+}
+
+static void
+rb_evloop_destroy(rb_evloop_t **_loop)
+{
+    rb_evloop_t *loop = *_loop;
+    loop->evsel->dealloc(loop->evop);
+    rb_hash_destroy(&loop->chlist);
+    rb_timer_destroy(&loop->timer);
+    rb_queue_destroy(&loop->active_chls);
+    rb_queue_destroy(&loop->ready_chls);
+    rb_queue_destroy(&loop->qtask);
+    rb_lock_destroy(&loop->mutex);
+    close(loop->wakefd[1]);
 }
 
 void
@@ -202,4 +216,11 @@ rb_evloop_run(rb_evloop_t *loop)
         }
         rb_run_task(loop);
     }
+    rb_evloop_destroy(&loop);
+}
+
+void
+rb_evloop_quit(rb_evloop_t *loop)
+{
+    loop->quit = 1;
 }

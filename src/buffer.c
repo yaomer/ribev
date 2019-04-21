@@ -173,11 +173,14 @@ rb_send(rb_channel_t *chl, const char *s, size_t len)
     if (rb_in_loop_thread(chl->loop))
         rb_send_in_loop(chl, s, len);
     else {
+        void *ps = rb_malloc(len);
+        memcpy(ps, s, len);
         rb_task_t *t = rb_alloc_task(3);
         t->callback = __rb_send_in_loop;
         t->argv[0] = chl;
-        t->argv[1] = (void *)s;
+        t->argv[1] = ps;
         t->argv[2] = (void *)len;
+        t->free_argv[1] = rb_free;
         rb_run_in_loop(chl->loop, t);
     }
 }

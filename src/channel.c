@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include "alloc.h"
 #include "channel.h"
 #include "event.h"
@@ -96,4 +97,14 @@ void
 rb_chl_disable_write(rb_channel_t *chl)
 {
     rb_chl_disable_event(chl, RB_EV_WRITE);
+}
+
+void
+rb_free_chl(void *arg)
+{
+    rb_channel_t *chl = (rb_channel_t *)arg;
+    close(chl->ev.ident);
+    rb_buffer_destroy(&chl->input);
+    rb_buffer_destroy(&chl->output);
+    rb_free(chl);
 }

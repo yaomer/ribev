@@ -45,6 +45,7 @@ rb_timer_init(void)
     rb_timer_t *t = rb_malloc(sizeof(rb_timer_t));
 
     t->timer = rb_vector_init(sizeof(rb_timestamp_t));
+    rb_vector_set_free(t->timer, rb_free_timestamp);
     /* 让heap数组下标从1开始 */
     rb_vector_resize(t->timer, 1);
 
@@ -134,8 +135,13 @@ rb_timer_del(rb_timer_t *t)
         return;
     }
 
+    rb_timestamp_t *tm = (rb_timestamp_t *)rb_vector_entry(t->timer, 1);
+    if (tm->interval > 0)
+        rb_vector_set_free(t->timer, NULL);
     rb_vector_swap(t->timer, 1, size);
     rb_vector_pop(t->timer);
+    if (tm->interval > 0)
+        rb_vector_set_free(t->timer, rb_free_timestamp);
     min_heap(t, 1);
 }
 
@@ -225,4 +231,13 @@ rb_run_every(rb_evloop_t *loop, int64_t interval, rb_task_t *t)
     tm->timeout = tm->interval = interval;
     tm->task = t;
     __rb_timer_add_in_loop(loop, tm);
+}
+
+void
+rb_timer_destroy(rb_timer_t **_t)
+{
+    rb_timer_t *t = *_t;
+    rb_vector_destroy(&t->timer);
+    rb_free(*_t);
+    *_t = NULL;
 }

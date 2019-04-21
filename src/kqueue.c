@@ -90,13 +90,10 @@ rb_kqueue_del(void *arg, rb_event_t *ev)
         rb_log_warn("kevent");
 }
 
-/*
- * 从kqueue的内核关注事件列表中移除一个[fd]。
- */
 static void
 rb_kqueue_remove(void *arg, int fd)
 {
-    close(fd);
+
 }
 
 /*

@@ -22,5 +22,6 @@ void rb_timer_tick(rb_evloop_t *loop);
 void rb_run_at(rb_evloop_t *loop, int64_t timeval, rb_task_t *t);
 void rb_run_after(rb_evloop_t *loop, int64_t timeout, rb_task_t *t);
 void rb_run_every(rb_evloop_t *loop, int64_t interval, rb_task_t *t);
+void rb_timer_destroy(rb_timer_t **_t);
 
 #endif /* _RIBEV_TIMER_H */
