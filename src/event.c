@@ -81,6 +81,7 @@ rb_handle_event(rb_channel_t *chl)
         if (chl->writecb)
             chl->writecb(chl);
     }
+    /* readcb()可能会销毁chl，所以应该放在最后 */
     if (chl->ev.revents & RB_EV_READ) {
         if (chl->readcb)
             chl->readcb(chl);

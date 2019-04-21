@@ -167,6 +167,9 @@ __rb_send_in_loop(void **argv)
     rb_send_in_loop(chl, s, len);
 }
 
+/*
+ * rb_send是线程安全的。
+ */
 void
 rb_send(rb_channel_t *chl, const char *s, size_t len)
 {
@@ -185,6 +188,9 @@ rb_send(rb_channel_t *chl, const char *s, size_t len)
     }
 }
 
+/*
+ * 清空缓冲区
+ */
 void
 rb_buffer_clear(rb_buffer_t *b)
 {

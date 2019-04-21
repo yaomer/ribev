@@ -29,3 +29,9 @@ rb_cli_run(rb_cli_t *cli)
         cli->concb(chl);
     rb_evloop_run(cli->loop);
 }
+
+void
+rb_cli_close(rb_channel_t *chl)
+{
+    rb_evloop_quit(chl->loop);
+}

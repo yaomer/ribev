@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdatomic.h>
+#include "log.h"
 
 static atomic_size_t alloc_cnt;
 
@@ -10,8 +11,8 @@ rb_malloc(size_t nbytes)
     void *p;
 
     if ((p = malloc(nbytes)) == NULL)
-        ;
-    atomic_fetch_add(&alloc_cnt, 1);
+        rb_log_error("malloc");
+    alloc_cnt++;
 
     return p;
 }
@@ -22,8 +23,8 @@ rb_calloc(size_t n, size_t len)
     void *p;
 
     if ((p = calloc(n, len)) == NULL)
-        ;
-    atomic_fetch_add(&alloc_cnt, 1);
+        rb_log_error("calloc");
+    alloc_cnt++;
 
     return p;
 }
@@ -31,13 +32,13 @@ rb_calloc(size_t n, size_t len)
 void
 rb_free(void *p)
 {
-    atomic_fetch_sub(&alloc_cnt, 1);
     free(p);
+    alloc_cnt--;
 }
 
 void
 rb_checkmem(void)
 {
     if (alloc_cnt)
-        ;
+        rb_log_warn("memory leak");
 }

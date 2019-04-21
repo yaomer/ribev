@@ -37,7 +37,6 @@ rb_evloop_init(void)
     rb_hash_set_free(loop->chlist, rb_free_chl);
     loop->timer = rb_timer_init();
     loop->active_chls = rb_queue_init();
-    loop->ready_chls = rb_queue_init();
     loop->qtask = rb_queue_init();
     rb_lock_init(&loop->mutex);
     rb_socketpair(loop->wakefd);
@@ -161,21 +160,6 @@ rb_run_io(rb_evloop_t *loop)
     }
 }
 
-/*
- * 将就绪连接加入到[loop]中
- */
-static void
-rb_add_ready_chls(rb_evloop_t *loop)
-{
-    rb_lock(&loop->mutex);
-    while (!rb_queue_is_empty(loop->ready_chls)) {
-        rb_channel_t *chl = rb_queue_front(loop->ready_chls);
-        rb_chl_add(chl);
-        rb_queue_pop(loop->ready_chls);
-    }
-    rb_unlock(&loop->mutex);
-}
-
 static void
 rb_evloop_destroy(rb_evloop_t **_loop)
 {
@@ -184,7 +168,6 @@ rb_evloop_destroy(rb_evloop_t **_loop)
     rb_hash_destroy(&loop->chlist);
     rb_timer_destroy(&loop->timer);
     rb_queue_destroy(&loop->active_chls);
-    rb_queue_destroy(&loop->ready_chls);
     rb_queue_destroy(&loop->qtask);
     rb_lock_destroy(&loop->mutex);
     close(loop->wakefd[1]);
@@ -196,8 +179,6 @@ rb_evloop_run(rb_evloop_t *loop)
     rb_wakeup_add(loop);
 
     while (!loop->quit) {
-        rb_add_ready_chls(loop);
-
         int timeout = rb_timer_out(loop->timer);
         int nevents = loop->evsel->dispatch(loop, loop->evop, timeout);
 

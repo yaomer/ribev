@@ -38,11 +38,7 @@ rb_serv_accept(rb_channel_t *chl)
     ch->ev.ident = rb_accept(chl->ev.ident);
     rb_chl_set_cb(ch, rb_handle_event, rb_handle_read, rb_handle_write,
             serv->msgcb);
-
-    rb_lock(&loop->mutex);
-    rb_queue_push(loop->ready_chls, ch);
-    rb_wakeup(loop);
-    rb_unlock(&loop->mutex);
+    rb_chl_add(ch);
 }
 
 void

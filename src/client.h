@@ -20,5 +20,6 @@ typedef struct rb_cli {
 
 rb_cli_t *rb_cli_init(int port, char *addr);
 void rb_cli_run(rb_cli_t *cli);
+void rb_cli_close(rb_channel_t *chl);
 
 #endif /* _RIBEV_CLIENT_H */
