@@ -17,5 +17,6 @@ typedef struct rb_task rb_task_t;
 typedef struct rb_timer rb_timer_t;
 typedef struct rb_evthr rb_evthr_t;
 typedef struct rb_evll rb_evll_t;
+typedef struct rb_timewheel rb_timewheel_t;
 
 #endif /* _RIBEV_FWD_H */

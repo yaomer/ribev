@@ -15,7 +15,7 @@ typedef struct rb_evloop {
      * 具体操作 */
     const rb_evop_t *evsel;
     /* chlist保存所有注册的chl，并且chl的生命期只由chlist决定，
-     * 其他对象可以共享chl，即又有一个指向chl的指针，但绝不能
+     * 其他对象可以共享chl，即拥有一个指向chl的指针，但绝不能
      * 销毁chl */
     rb_hash_t *chlist;    
     rb_timer_t *timer;

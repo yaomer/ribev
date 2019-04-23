@@ -15,7 +15,7 @@
 #define RB_HASH_INIT_SIZE 64
 /*
  * 装载因子，我们在每次插入时都需要计算当前的装载因子lf，
- * 如果lf > RB_HAS_HASH_LOAD_FACTOR，就需要对hash进行扩张，
+ * 如果lf > RB_HASH_LOAD_FACTOR，就需要对hash进行扩张，
  * 从而保证高效的查找效率
  */
 #define RB_HASH_LOAD_FACTOR 0.75
