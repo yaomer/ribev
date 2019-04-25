@@ -3,6 +3,7 @@
  * 访问最小timer则是O(1)的
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
@@ -64,7 +65,7 @@ static void
 min_heap(rb_timer_t *t, int i)
 {
     int l, r, smallest;
-    size_t size = rb_vector_size(t->timer);
+    size_t size = rb_vector_size(t->timer) - 1;
 
     l = left(i);
     r = right(i);
@@ -104,8 +105,9 @@ rb_timer_top(rb_timer_t *t)
 int
 rb_timer_out(rb_timer_t *t)
 {
+    int timeout;
     rb_timestamp_t *tm = rb_timer_top(t);
-    return tm ? llabs(tm->timeout - rb_now()) : -1;
+    return tm ? ((timeout = llabs(tm->timeout - rb_now())) > 0 ? timeout : 1) : -1;
 }
 
 /*
@@ -157,21 +159,16 @@ void
 rb_timer_tick(rb_evloop_t *loop)
 {
     rb_timestamp_t *tm = rb_timer_top(loop->timer);
-    int64_t timeout = tm->timeout;
 
-    /* 因为我们总是在io线程中添加timer，所以处理timer时
-     * 不需要加锁
-     */
-    while ((tm = rb_timer_top(loop->timer))) {
-        if (tm->timeout == timeout) {
-            tm->task->callback(tm->task->argv);
+    if (tm) {
+        rb_timestamp_t timestamp = *tm;
+        tm->task->callback(tm->task->argv);
+        if (tm->interval > 0) {
             rb_timer_del(loop->timer);
-            if (tm->interval > 0) {
-                tm->timeout = tm->interval;
-                rb_timer_add(loop->timer, tm);
-            }
+            timestamp.timeout = timestamp.interval;
+            rb_timer_add(loop->timer, &timestamp);
         } else
-            break;
+            rb_timer_del(loop->timer);
     }
 }
 

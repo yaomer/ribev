@@ -60,9 +60,10 @@ rb_realloc_vector(rb_vector_t *v, size_t len)
     while (v->max_size < v->size + len)
         v->max_size *= 2;
     v->data = rb_calloc(v->max_size, v->typesize);
-    if (tv)
+    if (tv) {
         memcpy(v->data, tv, _STEP(v, v->size));
-    rb_vector_free(v, tv, v->size);
+        rb_free(tv);
+    }
 }
 
 /*

@@ -25,7 +25,6 @@ COMMON_OBJS = evloop.o \
 			  net.o \
 			  log.o \
 			  alloc.o \
-			  timewheel.o \
 			  $(OPTION_OBJS)
 
 SERV_OBJS = server.o evll.o evthr.o $(COMMON_OBJS)
