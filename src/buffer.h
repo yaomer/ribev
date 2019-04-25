@@ -5,6 +5,8 @@
 #include "vector.h"
 #include "fwd.h"
 
+#define RB_BUFFER_PREPEND 8
+
 /*
  *                [buffer]
  *  --------------------------------------
@@ -25,7 +27,7 @@ typedef struct rb_buffer {
 #define rb_buffer_writeable(b) (rb_vector_max_size((b)->buf) - (b)->writeindex)
 
 rb_buffer_t * rb_buffer_init(void);
-void rb_buffer_update_readidx(rb_buffer_t *b, size_t len);
+void rb_buffer_retrieve(rb_buffer_t *b, size_t len);
 void rb_buffer_move_forward(rb_buffer_t *b, size_t len);
 void rb_buffer_read(rb_buffer_t *b, char *s, size_t n);
 void rb_buffer_write(rb_buffer_t *b, const char *s, size_t len);

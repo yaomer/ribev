@@ -111,7 +111,7 @@ rb_log_write_to_file(void *arg)
         }
 
         ssize_t n = write(fd, rb_buffer_begin(_log->buf), rb_buffer_readable(_log->buf));
-        rb_buffer_update_readidx(_log->buf, n);
+        rb_buffer_retrieve(_log->buf, n);
 
         if (_log->quit) {
             rb_unlock(&_log->mutex);

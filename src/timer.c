@@ -130,11 +130,8 @@ rb_timer_add(rb_timer_t *t, rb_timestamp_t *tm)
     }
 }
 
-/*
- * 弹出堆顶元素，即最小超时事件
- */
 static void
-rb_timer_del(rb_timer_t *t)
+rb_timer_pop(rb_timer_t *t)
 {
     size_t size = rb_vector_size(t->timer) - 1;
 
@@ -159,16 +156,20 @@ void
 rb_timer_tick(rb_evloop_t *loop)
 {
     rb_timestamp_t *tm = rb_timer_top(loop->timer);
+    int64_t timeout = tm->timeout;
 
-    if (tm) {
-        rb_timestamp_t timestamp = *tm;
-        tm->task->callback(tm->task->argv);
-        if (tm->interval > 0) {
-            rb_timer_del(loop->timer);
-            timestamp.timeout = timestamp.interval;
-            rb_timer_add(loop->timer, &timestamp);
+    while ((tm = rb_timer_top(loop->timer))) {
+        if (tm->timeout == timeout) {
+            rb_timestamp_t timestamp = *tm;
+            tm->task->callback(tm->task->argv);
+            if (tm->interval > 0) {
+                rb_timer_pop(loop->timer);
+                timestamp.timeout = timestamp.interval;
+                rb_timer_add(loop->timer, &timestamp);
+            } else
+                rb_timer_pop(loop->timer);
         } else
-            rb_timer_del(loop->timer);
+            break;
     }
 }
 

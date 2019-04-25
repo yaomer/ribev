@@ -3,7 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 
-void
+static void
 msgcb(rb_channel_t *chl)
 {
     char *s = rb_buffer_begin(chl->input);

@@ -63,7 +63,7 @@ rb_handle_write(rb_channel_t *chl)
         ssize_t n = write(chl->ev.ident, buf, readable);
         rb_log_debug("writes %zd bytes to fd=%d", n, chl->ev.ident);
         if (n >= 0) {
-            rb_buffer_update_readidx(chl->output, n);
+            rb_buffer_retrieve(chl->output, n);
             if (rb_buffer_readable(chl->output) == 0)
                 rb_chl_disable_write(chl);
         } else

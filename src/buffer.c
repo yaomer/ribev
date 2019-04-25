@@ -28,8 +28,9 @@ rb_buffer_init(void)
     rb_buffer_t *b = rb_malloc(sizeof(rb_buffer_t));
 
     b->buf = rb_vector_init(sizeof(char));
-    b->readindex = b->writeindex = 0;
+    b->readindex = b->writeindex = RB_BUFFER_PREPEND;
     rb_vector_reserve(b->buf, RB_BUFFER_INIT_SIZE);
+    rb_vector_resize(b->buf, RB_BUFFER_PREPEND);
 
     return b;
 }
@@ -39,12 +40,12 @@ rb_buffer_init(void)
  * 就将[readindex]和[writeindex]置为初始位置。
  */
 void
-rb_buffer_update_readidx(rb_buffer_t *b, size_t len)
+rb_buffer_retrieve(rb_buffer_t *b, size_t len)
 {
     if (len < rb_buffer_readable(b))
         b->readindex += len;
     else
-        b->readindex = b->writeindex = 0;
+        b->readindex = b->writeindex = RB_BUFFER_PREPEND;
 }
 
 /*
@@ -63,8 +64,8 @@ rb_buffer_move_forward(rb_buffer_t *b, size_t len)
 
     if (len > writeable && len < prependable + readable) {
         memcpy(rb_vector_entry(b->buf, 0), rb_buffer_begin(b), readable);
-        b->readindex = 0;
-        b->writeindex = readable;
+        b->readindex = RB_BUFFER_PREPEND;
+        b->writeindex = b->readindex + readable;
     }
 }
 
@@ -80,7 +81,7 @@ rb_buffer_read(rb_buffer_t *b, char *s, size_t n)
         n = readable + 1;
     }
     memcpy(s, rb_buffer_begin(b), n - 1);
-    rb_buffer_update_readidx(b, n - 1);
+    rb_buffer_retrieve(b, n - 1);
     s[n] = '\0';
 }
 
@@ -147,7 +148,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
                  * 当fd变得可写时，再继续发送。
                  */
                 rb_buffer_write(chl->output, s + n, len - n);
-                rb_buffer_update_readidx(chl->output, len - n);
+                rb_buffer_retrieve(chl->output, len - n);
                 rb_chl_enable_write(chl);
             }
         }
@@ -158,7 +159,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
          */
         rb_buffer_move_forward(chl->output, len);
         rb_buffer_write(chl->output, s, len);
-        rb_buffer_update_readidx(chl->output, len);
+        rb_buffer_retrieve(chl->output, len);
     }
 }
 
