@@ -23,9 +23,10 @@ rb_evloop_t *
 rb_evloop_init(void)
 {
     rb_evloop_t *loop = rb_malloc(sizeof(rb_evloop_t));
-    if (__loop)
+    if (__loop) {
+        rb_free(loop);
         rb_log_error("more than one loop in thread");
-    else
+    } else
         __loop = loop;
 
     /* 选择合适的I/O多路复用机制 */
@@ -161,9 +162,8 @@ rb_run_io(rb_evloop_t *loop)
 }
 
 static void
-rb_evloop_destroy(rb_evloop_t **_loop)
+rb_evloop_destroy(rb_evloop_t *loop)
 {
-    rb_evloop_t *loop = *_loop;
     loop->evsel->dealloc(loop->evop);
     rb_hash_destroy(&loop->chlist);
     rb_timer_destroy(&loop->timer);
@@ -171,6 +171,13 @@ rb_evloop_destroy(rb_evloop_t **_loop)
     rb_queue_destroy(&loop->qtask);
     rb_lock_destroy(&loop->mutex);
     close(loop->wakefd[1]);
+    /* 因为rb_serv_t和rb_cli_t中都用到了loop的实例，
+     * 所以我们不能直接rb_free(loop)，&cli->loop和&serv->mloop并不是
+     * 直接由malloc()分配的，它们是rb_serv_t和rb_cli_t的一部分，
+     * 是在分配它们的时候分配的，只需要直接释放serv和cli即可，
+     * 它们自然会被释放。当然，如果是[rb_evloop_t *]则需要用户
+     * 手动释放loop本身 */
+    /* rb_free(loop); */
 }
 
 void
@@ -197,7 +204,7 @@ rb_evloop_run(rb_evloop_t *loop)
         }
         rb_run_task(loop);
     }
-    rb_evloop_destroy(&loop);
+    rb_evloop_destroy(loop);
 }
 
 void

@@ -42,7 +42,6 @@ rb_free_timestamp(void *arg)
 {
     rb_timestamp_t *t = (rb_timestamp_t *)arg;
     rb_free_task(t->task);
-    rb_free(t);
 }
 
 rb_timer_t *

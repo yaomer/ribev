@@ -1,5 +1,7 @@
 PLATFORM = $(shell ./systype.sh)
-CFLAGS = -Wall
+LIBSERV = libribev-serv.a
+LIBCLI = libribev-cli.a
+CFLAGS = -Wall -std=c11
 
 ifeq "$(PLATFORM)" "linux"
     CC = gcc
@@ -10,7 +12,7 @@ ifeq "$(PLATFORM)" "macos"
     OPTION_OBJS = kqueue.o poll.o
 endif
 
-all: libribev-serv.a libribev-cli.a
+all : $(LIBSERV) $(LIBCLI)
 
 COMMON_OBJS = evloop.o \
 			  channel.o \
@@ -27,20 +29,22 @@ COMMON_OBJS = evloop.o \
 			  alloc.o \
 			  $(OPTION_OBJS)
 
-SERV_OBJS = server.o evll.o evthr.o $(COMMON_OBJS)
+SERV_OBJS = $(COMMON_OBJS) \
+			server.o \
+			evll.o \
+			evthr.o
 
-CLI_OBJS = client.o $(COMMON_OBJS)
+CLI_OBJS = $(COMMON_OBJS) \
+		   client.o
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-libribev-serv.a : $(SERV_OBJS)
-	ar -r libribev-serv.a $(SERV_OBJS) 
-	chmod 0777 libribev-serv.a
+$(LIBSERV) : $(SERV_OBJS)
+	ar -r $(LIBSERV) $(SERV_OBJS) 
 	
-libribev-cli.a : $(CLI_OBJS)
-	ar -r libribev-cli.a $(CLI_OBJS)
-	chmod 0777 libribev-cli.a
+$(LIBCLI) : $(CLI_OBJS)
+	ar -r $(LIBCLI) $(CLI_OBJS)
 
 .PHONY : clean
 clean:

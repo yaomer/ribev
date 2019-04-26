@@ -9,6 +9,7 @@ msgcb(rb_channel_t *chl)
     char *s = rb_buffer_begin(chl->input);
     size_t len = rb_buffer_readable(chl->input);
     rb_send(chl, s, len);
+    rb_buffer_retrieve(chl->input, len);
 }
 
 int

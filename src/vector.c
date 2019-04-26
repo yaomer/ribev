@@ -30,6 +30,7 @@ rb_vector_init(size_t typesize)
     v->max_size = 2;
     v->typesize = typesize;
     v->data = rb_calloc(v->max_size, typesize);
+    v->cfree = rb_calloc(v->max_size, 1);
     v->free_data = NULL;
 
     return v;
@@ -43,7 +44,7 @@ static void
 rb_vector_free(rb_vector_t *v, void *data, size_t size)
 {
     if (v->free_data)
-        for (int i = 0; i < size; i++)
+        for (int i = 0; i < size && v->cfree[i]; i++)
             v->free_data(data + _STEP(v, i));
     rb_free(data);
 }
@@ -57,12 +58,18 @@ static void
 rb_realloc_vector(rb_vector_t *v, size_t len)
 {
     void *tv = v->data;
+    char *tc = v->cfree;
     while (v->max_size < v->size + len)
         v->max_size *= 2;
     v->data = rb_calloc(v->max_size, v->typesize);
+    v->cfree = rb_calloc(v->max_size, 1);
     if (tv) {
         memcpy(v->data, tv, _STEP(v, v->size));
         rb_free(tv);
+    }
+    if (tc) {
+        memcpy(v->cfree, tc, v->size);
+        rb_free(tc);
     }
 }
 
@@ -71,9 +78,9 @@ rb_realloc_vector(rb_vector_t *v, size_t len)
  * struct A {
  *     int a;
  *     char *s;  // s = "hello, world!"
- * };
- * 假如type(data) = (A*)，则只会拷贝s本身，一个8bytes的指针，
- * 不会也无法拷贝s指向的内存
+ * }; struct A *pA;
+ * 如上，我们只能拷贝pA->s本身，一个8bytes的指针，不会也无法
+ * 拷贝pA->s指向的内存
  */
 void
 rb_vector_push(rb_vector_t *v, void *data)
@@ -81,7 +88,7 @@ rb_vector_push(rb_vector_t *v, void *data)
     if (v->size + 1 > v->max_size)
         rb_realloc_vector(v, 1);
     memcpy(v->data + _STEP(v, v->size), data, v->typesize);
-    v->size++;
+    v->cfree[v->size++] = 1;
 }
 
 /*
@@ -99,13 +106,12 @@ rb_vector_push_str(rb_vector_t *v, const char *s, size_t len)
 /*
  * 弹出v->data[v->size - 1]，但它本身并不会马上释放，而是当再次
  * 扩充vector或销毁vector时才会释放。
- * 所以当你有时越界访问时可能会访问到之前pop的数据。
  */
 void
 rb_vector_pop(rb_vector_t *v)
 {
     v->size--;
-    if (v->free_data)
+    if (v->free_data && v->cfree[v->size])
         v->free_data(v->data + _STEP(v, v->size));
 }
 
@@ -141,6 +147,9 @@ rb_vector_swap(rb_vector_t *v, int i, int j)
     memcpy(tmp, v->data + _STEP(v, i), v->typesize);
     memcpy(v->data + _STEP(v, i), v->data + _STEP(v, j), v->typesize);
     memcpy(v->data + _STEP(v, j), tmp, v->typesize);
+    char t = v->cfree[i];
+    v->cfree[i] = v->cfree[j];
+    v->cfree[j] = t;
     rb_free(tmp);
 }
 

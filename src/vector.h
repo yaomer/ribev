@@ -4,16 +4,21 @@
 #include <stddef.h>
 
 typedef struct rb_vector {
-    void *data;   /* 一个可变数组 */
-    size_t size;  /* 已使用大小 */
+    void *data;     /* 一个可变数组 */
+    size_t size;    /* 已使用大小 */
     size_t max_size;  /* 最大大小 */
     size_t typesize;  /* 存储的类型大小 */
+    char *cfree;    /* 标记哪个元素是可被释放的 */
     /* 当data[i]中存有指向heap的指针时，用户需要提供free_data()
      * 函数用来释放其内存，但用户切记不能释放&data[i]本身，因为
      * 它不一定是由[*alloc()]返回的指针，我们的分配策略是每次分配
      * 一大块内存，因而当释放时，只需调用一次rb_free(data)即可，
      * 不能对每个&data[i]都调用rb_free()。
-     */
+     * struct A {
+     *     int a;
+     *     char *s;
+     * }; struct A *pA;
+     * 我们只能释放pA->s，而不能释放pA本身 */
     void (*free_data)(void *);
 } rb_vector_t;
 
