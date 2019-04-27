@@ -20,7 +20,8 @@ rb_chl_init(rb_evloop_t *loop)
     rb_ev_set(&chl->ev, -1, 0, 0);
     chl->input = rb_buffer_init();
     chl->output = rb_buffer_init();
-    rb_chl_set_cb(chl, NULL, NULL, NULL, NULL);
+    rb_chl_set_cb(chl, NULL, NULL, NULL, NULL,
+            NULL, NULL);
 
     return chl;
 }

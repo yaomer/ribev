@@ -37,3 +37,10 @@ rb_evll_get_nextloop(rb_evll_t *evll)
         evll->nextloop = 0;
     return evll->thrloop[evll->nextloop++];
 }
+
+void
+rb_evll_quit(rb_evll_t *evll)
+{
+    for (int i = 0; i < evll->numloops; i++)
+        rb_evthr_quit(evll->thrloop[i]);
+}

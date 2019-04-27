@@ -162,7 +162,7 @@ rb_log_init(void)
     rb_lock_init(&_log->mutex);
     rb_cond_init(&_log->cond);
     rb_log_creat_dir();
-    rb_creat_thread(&_log->tid, rb_log_write_to_file, NULL);
+    pthread_create(&_log->tid, NULL, rb_log_write_to_file, NULL);
 }
 
 /*

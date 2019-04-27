@@ -18,5 +18,8 @@ typedef struct rb_timer rb_timer_t;
 typedef struct rb_evthr rb_evthr_t;
 typedef struct rb_evll rb_evll_t;
 typedef struct rb_timewheel rb_timewheel_t;
+typedef struct rb_threadpool rb_threadpool_t;
+typedef struct rb_serv rb_serv_t;
+typedef struct rb_cli rb_cli_t;
 
 #endif /* _RIBEV_FWD_H */

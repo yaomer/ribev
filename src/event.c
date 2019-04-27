@@ -47,7 +47,8 @@ rb_handle_read(rb_channel_t *chl)
         if (chl->msgcb)
             chl->msgcb(chl);
     } else if (n == 0) {
-        rb_handle_close(chl);
+        if (chl->closecb)
+            chl->closecb(chl);
     } else {
         rb_handle_error(chl);
     }

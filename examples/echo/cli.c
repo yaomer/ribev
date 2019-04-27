@@ -14,18 +14,18 @@ msgcb(rb_channel_t *chl)
 }
 
 static void
-stdincb(rb_channel_t *from, rb_channel_t *to)
+stdincb(rb_channel_t *in, rb_channel_t *out)
 {
-    char *s = rb_buffer_begin(from->input);
-    size_t len = rb_buffer_readable(from->input);
-    rb_buffer_retrieve(from->input, len);
-    rb_send(to, s, len);
+    char *s = rb_buffer_begin(in->input);
+    size_t len = rb_buffer_readable(in->input);
+    rb_buffer_retrieve(in->input, len);
+    rb_send(out, s, len);
 }
 
 int
 main(void)
 {
-    rb_cli_t *cli = rb_cli_init(6000, "127.0.0.1");
-    rb_cli_set_cb(cli, msgcb, NULL, stdincb);
+    rb_cli_t *cli = rb_cli_init();
+    rb_cli_connect(cli, 6000, "127.0.0.1", msgcb, NULL, stdincb);
     rb_cli_run(cli);
 }

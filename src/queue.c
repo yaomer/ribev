@@ -22,10 +22,10 @@ rb_queue_init(void)
 /*
  * 返回队头节点
  */
-void *
+struct queue_node *
 rb_queue_front(rb_queue_t *q)
 {
-    return q->front->next->data;
+    return q->front->next;
 }
 
 int
@@ -37,6 +37,7 @@ rb_queue_is_empty(rb_queue_t *q)
 /*
  * 入队操作
  */
+#include "channel.h"
 void
 rb_queue_push(rb_queue_t *q, void *data)
 {

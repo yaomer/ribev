@@ -8,17 +8,14 @@
 #include "log.h"
 
 rb_cli_t *
-rb_cli_init(int port, char *addr)
+rb_cli_init(void)
 {
     rb_cli_t *cli = rb_malloc(sizeof(rb_cli_t));
 
-    cli->port = port;
-    cli->addr = addr;
-    cli->chl = NULL;
     rb_evloop_t *loop = rb_evloop_init();
     cli->loop = *loop;
     rb_free(loop);
-    rb_cli_set_cb(cli, NULL, NULL, NULL);
+    cli->chl = NULL;
 
     return cli;
 }
@@ -55,21 +52,51 @@ rb_cli_set_stdin(rb_cli_t *cli)
 {
     rb_channel_t *in = rb_chl_init(&cli->loop);
     in->ev.ident = 0;
-    rb_chl_set_cb(in, rb_handle_event, rb_read_stdin, NULL, NULL);
+    rb_chl_set_cb(in, rb_handle_event, rb_read_stdin, NULL,
+            rb_handle_close, NULL, NULL);
     rb_chl_add(in);
+}
+
+/*
+ * stdin只能绑定到一个chl上
+ */
+void
+rb_cli_connect_s(rb_cli_t *cli, int ports[], char *addr[], size_t len,
+        void (*msgcb[])(rb_channel_t *),
+        void (*concb[])(rb_channel_t *),
+        size_t index,  /* 将stdin绑定到连接ports[index]的chl上 */
+        void (*stdincb)(rb_channel_t *, rb_channel_t *))
+{
+    cli->stdincb = stdincb;
+    for (int i = 0; i < len; i++) {
+        rb_channel_t *chl = rb_chl_init(&cli->loop);
+        chl->ev.ident = rb_connect(ports[i], addr[i]);
+        rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
+                rb_handle_close, msgcb[i], concb[i]);
+        rb_chl_add(chl);
+        if (chl->concb)
+            chl->concb(chl);
+        if (i == index) {
+            rb_cli_set_stdin(cli);
+            cli->chl = chl;
+        }
+    }
+}
+
+void
+rb_cli_connect(rb_cli_t *cli, int port, char *addr,
+        void (*msgcb)(rb_channel_t *),
+        void (*concb)(rb_channel_t *),
+        void (*stdincb)(rb_channel_t *, rb_channel_t *))
+{
+    void (*mcb[])(rb_channel_t *) = { msgcb };
+    void (*ccb[])(rb_channel_t *) = { concb };
+    rb_cli_connect_s(cli, &port, &addr, 1, mcb, ccb, 0, stdincb);
 }
 
 void
 rb_cli_run(rb_cli_t *cli)
 {
-    cli->chl = rb_chl_init(&cli->loop);
-    cli->chl->ev.ident = rb_connect(cli->port, cli->addr);
-    rb_chl_set_cb(cli->chl, rb_handle_event, rb_handle_read, rb_handle_write,
-            cli->msgcb);
-    rb_chl_add(cli->chl);
-    rb_cli_set_stdin(cli);
-    if (cli->concb)
-        cli->concb(cli->chl);
     rb_evloop_run(&cli->loop);
     rb_cli_destroy(&cli);
 }

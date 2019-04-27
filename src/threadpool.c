@@ -22,7 +22,7 @@ rb_threadpool_func(void *arg)
             rb_unlock(&pool->mutex);
             break;
         }
-        rb_task_t *t = (rb_task_t *)rb_queue_front(pool->qtask);
+        rb_task_t *t = (rb_task_t *)rb_queue_front(pool->qtask)->data;
         rb_queue_pop(pool->qtask);
         rb_unlock(&pool->mutex);
         t->callback(t->argv);
@@ -43,7 +43,7 @@ rb_threadpool_init(int threads)
     pool->threads = threads;
     pool->quit = 0;
     for (int i = 0; i < threads; i++)
-        rb_creat_thread(&pool->tid[i], rb_threadpool_func, pool);
+        pthread_create(&pool->tid[i], NULL, rb_threadpool_func, pool);
 
     return pool;
 }

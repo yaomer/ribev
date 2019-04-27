@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stddef.h>
 #include "alloc.h"
 #include "server.h"
@@ -10,16 +11,14 @@
 #include "queue.h"
 
 rb_serv_t *
-rb_serv_init(int loops, int port)
+rb_serv_init(int loops)
 {
     rb_serv_t *serv = rb_malloc(sizeof(rb_serv_t));
 
-    serv->port = port;
     serv->evll = rb_evll_init(loops);
     rb_evloop_t *loop = rb_evloop_init();
     serv->mloop = *loop;
     rb_free(loop);
-    rb_serv_set_cb(serv, NULL);
 
     return serv;
 }
@@ -37,17 +36,48 @@ rb_serv_accept(rb_channel_t *chl)
     rb_channel_t *ch = rb_chl_init(loop);
     ch->ev.ident = rb_accept(chl->ev.ident);
     rb_chl_set_cb(ch, rb_handle_event, rb_handle_read, rb_handle_write,
-            serv->msgcb);
+            rb_handle_close, chl->msgcb, NULL);
     rb_chl_add(ch);
+}
+
+/*
+ * 让一个server可以同时监听多个port
+ */
+void
+rb_serv_listen_ports(rb_serv_t *serv, int ports[], size_t len,
+        void (*msgcb[])(rb_channel_t *))
+{
+    for (int i = 0; i < len; i++) {
+        rb_channel_t *chl = rb_chl_init(&serv->mloop);
+        chl->ev.ident = rb_listen(ports[i]);
+        rb_chl_set_cb(chl, rb_handle_event, rb_serv_accept, NULL,
+                rb_handle_close, msgcb[i], NULL);
+        rb_chl_add(chl);
+    }
+}
+
+/*
+ * 通常我们只需要监听一个port，这时使用这个接口比较方便一点
+ */
+void
+rb_serv_listen(rb_serv_t *serv, int port, void (*msgcb)(rb_channel_t *))
+{
+    void (*cb[1])(rb_channel_t *) = { msgcb };
+    rb_serv_listen_ports(serv, &port, 1, cb);
 }
 
 void
 rb_serv_run(rb_serv_t *serv)
 {
-    rb_channel_t *chl = rb_chl_init(&serv->mloop);
-    chl->ev.ident = rb_listen(serv->port);
-    rb_chl_set_cb(chl, rb_handle_event, rb_serv_accept, NULL, NULL);
-    rb_chl_add(chl);
     rb_evll_run(serv->evll);
     rb_evloop_run(&serv->mloop);
+    rb_free(serv);
+}
+
+void
+rb_serv_quit(rb_serv_t *serv)
+{
+    rb_evll_quit(serv->evll);
+    rb_free(serv->evll);
+    rb_evloop_quit(&serv->mloop);
 }

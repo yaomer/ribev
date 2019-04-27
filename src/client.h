@@ -6,23 +6,23 @@
 #include "fwd.h"
 
 typedef struct rb_cli {
-    int port;
-    char *addr;
     rb_evloop_t loop;
     rb_channel_t *chl;
-    void (*msgcb)(rb_channel_t *);
-    void (*concb)(rb_channel_t *);
     void (*stdincb)(rb_channel_t *, rb_channel_t *);
 } rb_cli_t;
 
-#define rb_cli_set_cb(cli, m, c, s) \
-    do { \
-        (cli)->msgcb = m; \
-        (cli)->concb = c; \
-        (cli)->stdincb = s; \
-    } while (0)
+void
+rb_cli_connect_s(rb_cli_t *cli, int ports[], char *addr[], size_t len,
+        void (*msgcb[])(rb_channel_t *),
+        void (*concb[])(rb_channel_t *),
+        size_t index,
+        void (*stdincb)(rb_channel_t *, rb_channel_t *));
+void rb_cli_connect(rb_cli_t *cli, int port, char *addr,
+        void (*msgcb)(rb_channel_t *),
+        void (*concb)(rb_channel_t *),
+        void (*stdincb)(rb_channel_t *, rb_channel_t *));
 
-rb_cli_t *rb_cli_init(int port, char *addr);
+rb_cli_t *rb_cli_init(void);
 void rb_cli_run(rb_cli_t *cli);
 void rb_cli_close(rb_channel_t *chl);
 

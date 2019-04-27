@@ -89,7 +89,8 @@ rb_wakeup_add(rb_evloop_t *loop)
     rb_channel_t *chl = rb_chl_init(loop);
 
     chl->ev.ident = loop->wakefd[0];
-    rb_chl_set_cb(chl, rb_handle_event, rb_wakeup_read, NULL, NULL);
+    rb_chl_set_cb(chl, rb_handle_event, rb_wakeup_read, NULL,
+            rb_handle_close, NULL, NULL);
     rb_chl_add(chl);
     rb_chl_enable_read(chl);
 }
@@ -130,7 +131,7 @@ rb_run_task(rb_evloop_t *loop)
     rb_queue_set_free(tk, rb_free_task);
     /* 将待执行的task先转移到tk中，以减小临界区的大小 */
     while (!rb_queue_is_empty(loop->qtask) && ntasks <= RB_RUN_MAX_TASKS) {
-        rb_task_t *t = rb_queue_front(loop->qtask);
+        rb_task_t *t = (rb_task_t *)rb_queue_front(loop->qtask)->data;
         rb_queue_push(tk, t);
         rb_queue_pop(loop->qtask);
         ntasks++;
@@ -139,7 +140,7 @@ rb_run_task(rb_evloop_t *loop)
 
     rb_log_debug("executes %d tasks", ntasks);
     while (ntasks > 0) {
-        rb_task_t *t = rb_queue_front(tk);
+        rb_task_t *t = (rb_task_t *)rb_queue_front(tk)->data;
         t->callback(t->argv);
         rb_queue_pop(tk);
         ntasks--;
@@ -154,7 +155,7 @@ static void
 rb_run_io(rb_evloop_t *loop)
 {
     while (!rb_queue_is_empty(loop->active_chls)) {
-        rb_channel_t *chl = rb_queue_front(loop->active_chls);
+        rb_channel_t *chl = (rb_channel_t *)rb_queue_front(loop->active_chls)->data;
         if (chl->eventcb)
             chl->eventcb(chl);
         rb_queue_pop(loop->active_chls);

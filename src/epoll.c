@@ -95,7 +95,6 @@ rb_epoll_remove(void *arg, int fd)
      */
     if (epoll_ctl(ep->epfd, EPOLL_CTL_DEL, fd, NULL) < 0)
         rb_log_warn("epoll_ctl");
-    close(fd);
 }
 
 static void

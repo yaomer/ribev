@@ -13,7 +13,7 @@ typedef struct rb_queue {
 } rb_queue_t;
 
 rb_queue_t *rb_queue_init(void);
-void *rb_queue_front(rb_queue_t *q);
+struct queue_node *rb_queue_front(rb_queue_t *q);
 int rb_queue_is_empty(rb_queue_t *q);
 void rb_queue_push(rb_queue_t *q, void *data);
 void rb_queue_pop(rb_queue_t *q);

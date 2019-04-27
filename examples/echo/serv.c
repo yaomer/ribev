@@ -1,7 +1,6 @@
 #include "../usr_serv.h"
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
 
 static void
 msgcb(rb_channel_t *chl)
@@ -15,7 +14,7 @@ msgcb(rb_channel_t *chl)
 int
 main(void)
 {
-    rb_serv_t *serv = rb_serv_init(1, 6000);
-    rb_serv_set_cb(serv, msgcb);
+    rb_serv_t *serv = rb_serv_init(1);
+    rb_serv_listen(serv, 6000, msgcb);
     rb_serv_run(serv);
 }
