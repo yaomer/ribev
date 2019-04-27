@@ -7,7 +7,6 @@
 #include <limits.h>
 #include <fcntl.h>
 #include <pthread.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/dir.h>
 #include <errno.h>
@@ -18,6 +17,7 @@
 #include "buffer.h"
 #include "lock.h"
 #include "net.h"
+#include "util.h"
 
 rb_log_t *_log;
 
@@ -34,21 +34,6 @@ rb_logstr(int level)
         return "ERROR";
     else
         return "none";
-}
-
-/*
- * 获取当前时间的字符串表示，精确到ms
- */
-static char *
-rb_get_timestr(int64_t ms, char *buf, size_t len)
-{
-    struct tm tm;
-    time_t seconds = ms / 1000;
-    gmtime_r(&seconds, &tm);
-    snprintf(buf, len, "%4d-%02d-%02d-%02d:%02d:%02d.%04lld",
-            tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
-            tm.tm_hour, tm.tm_min, tm.tm_sec, ms % 1000);
-    return buf;
 }
 
 /*

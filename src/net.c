@@ -1,6 +1,3 @@
-#ifdef RB_HAVE_GETTID
-#include <sys/syscall.h>
-#endif
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -13,22 +10,8 @@
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <sys/time.h>
-#include "config.h"
 #include "net.h"
 #include "log.h"
-
-long
-rb_thread_id(void)
-{
-#ifdef RB_HAVE_PTHREAD_MACH_THREAD_NP
-    return pthread_mach_thread_np(pthread_self());
-#elif RB_HAVE_GETTID
-    return syscall(SYS_gettid);
-#else
-    rb_log_error("can't return tid");
-    return -1;
-#endif
-}
 
 void
 rb_set_nonblock(int fd)

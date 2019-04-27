@@ -15,7 +15,6 @@ typedef struct rb_timer {
     rb_vector_t *timer;
 } rb_timer_t;
 
-int64_t rb_now(void);
 rb_timer_t *rb_timer_init(void);
 int rb_timer_out(rb_timer_t *t);
 void rb_timer_tick(rb_evloop_t *loop);

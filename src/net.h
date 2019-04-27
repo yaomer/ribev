@@ -3,7 +3,6 @@
 
 #define RB_LISTENQ 1024
 
-long rb_thread_id(void);
 void rb_set_nonblock(int fd);
 void rb_socketpair(int *fd);
 int rb_connect(int port, const char *addr);

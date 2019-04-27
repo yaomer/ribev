@@ -27,6 +27,7 @@ COMMON_OBJS = evloop.o \
 			  net.o \
 			  log.o \
 			  alloc.o \
+			  util.o \
 			  $(OPTION_OBJS)
 
 SERV_OBJS = $(COMMON_OBJS) \

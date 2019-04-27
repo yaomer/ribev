@@ -9,5 +9,6 @@
 #include "../src/buffer.h"
 #include "../src/timer.h"
 #include "../src/task.h"
+#include "../src/util.h"
 
 #endif /* _USR_SERV_H */

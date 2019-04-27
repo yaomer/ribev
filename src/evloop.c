@@ -12,6 +12,7 @@
 #include "net.h"
 #include "lock.h"
 #include "task.h"
+#include "util.h"
 #include "log.h"
 
 /*

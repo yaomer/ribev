@@ -6,29 +6,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
 #include "timer.h"
 #include "vector.h"
 #include "evloop.h"
 #include "task.h"
 #include "alloc.h"
+#include "util.h"
 
 #define parent(i)   (i / 2)
 #define left(i)     (i * 2)
 #define right(i)    (i * 2 + 1)
 
 #define timeout(t, i) (((rb_timestamp_t *)rb_vector_entry(t, i))->timeout)
-
-/*
- * 返回当前日历时间的时间戳(ms)
- */
-int64_t
-rb_now(void)
-{
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return tv.tv_sec * 1000 + tv.tv_usec / 1000;
-}
 
 rb_timestamp_t *
 rb_alloc_timestamp(void)
