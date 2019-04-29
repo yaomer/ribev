@@ -38,7 +38,7 @@ rb_read_stdin(rb_channel_t *chl)
         if (cli->stdincb)
             cli->stdincb(chl, cli->chl);
     } else if (n == 0)
-        rb_cli_close(chl);
+        chl->closecb(chl);
     else
         rb_log_error("stdin error");
 }
@@ -53,7 +53,7 @@ rb_cli_set_stdin(rb_cli_t *cli)
     rb_channel_t *in = rb_chl_init(&cli->loop);
     in->ev.ident = 0;
     rb_chl_set_cb(in, rb_handle_event, rb_read_stdin, NULL,
-            rb_handle_close, NULL, NULL);
+            rb_cli_close, NULL);
     rb_chl_add(in);
 }
 
@@ -72,7 +72,8 @@ rb_cli_connect_s(rb_cli_t *cli, int ports[], char *addr[], size_t len,
         rb_channel_t *chl = rb_chl_init(&cli->loop);
         chl->ev.ident = rb_connect(ports[i], addr[i]);
         rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
-                rb_handle_close, msgcb[i], concb[i]);
+                rb_handle_close, msgcb[i]);
+        rb_chl_set_concb(chl, concb[i]);
         rb_chl_add(chl);
         if (chl->concb)
             chl->concb(chl);

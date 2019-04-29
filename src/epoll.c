@@ -91,8 +91,7 @@ rb_epoll_remove(void *arg, int fd)
 {
     rb_epoll_t *ep = (rb_epoll_t *)arg;
     /* EPOLL_CTL_DEL会从内核关注的fd列表中移除fd，events参数将被忽略，
-     * 所以可以设置为NULL
-     */
+     * 所以可以设置为NULL */
     if (epoll_ctl(ep->epfd, EPOLL_CTL_DEL, fd, NULL) < 0)
         rb_log_warn("epoll_ctl");
 }

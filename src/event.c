@@ -65,8 +65,12 @@ rb_handle_write(rb_channel_t *chl)
         rb_log_debug("writes %zd bytes to fd=%d", n, chl->ev.ident);
         if (n >= 0) {
             rb_buffer_retrieve(chl->output, n);
-            if (rb_buffer_readable(chl->output) == 0)
+            if (rb_buffer_readable(chl->output) == 0) {
                 rb_chl_disable_write(chl);
+                rb_chl_clear_flag(chl, RB_SENDING);
+                if (chl->write_complete_cb)
+                    chl->write_complete_cb(chl);
+            }
         } else
             rb_log_error("write");
     }

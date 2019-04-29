@@ -90,8 +90,8 @@ rb_wakeup_add(rb_evloop_t *loop)
     rb_channel_t *chl = rb_chl_init(loop);
 
     chl->ev.ident = loop->wakefd[0];
-    rb_chl_set_cb(chl, rb_handle_event, rb_wakeup_read, NULL,
-            rb_handle_close, NULL, NULL);
+    rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
+            rb_handle_close, NULL);
     rb_chl_add(chl);
     rb_chl_enable_read(chl);
 }

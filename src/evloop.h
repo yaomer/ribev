@@ -26,6 +26,7 @@ typedef struct rb_evloop {
      * 只管向qtask中添加task，然后io线程通过qtask来执行这些
      * task，从而避免一些复杂的线程同步问题 */
     rb_queue_t *qtask;
+    /* rb_threadpool_t *pool; */
     pthread_mutex_t mutex;
     /* 由socketpair()创建，需要时用来唤醒阻塞在evsel->dispatch()
      * 上的io线程 */

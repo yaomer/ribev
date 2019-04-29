@@ -18,9 +18,10 @@ msgcb(rb_channel_t *chl)
 static void
 stdincb(rb_channel_t *from, rb_channel_t *to)
 {
-    chat_add_msglen(from->input, rb_buffer_readable(from->input));
-    char *s = rb_buffer_begin(from->input);
     size_t len = rb_buffer_readable(from->input);
+    chat_add_msglen(from->input, len);
+    char *s = rb_buffer_begin(from->input);
+    len = rb_buffer_readable(from->input);
     rb_buffer_retrieve(from->input, len);
     rb_send(to, s, len);
 }

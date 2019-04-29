@@ -2,12 +2,14 @@
 #define _RIBEV_CLIENT_H
 
 #include <stddef.h>
+#include <stdatomic.h>
 #include "evloop.h"
 #include "fwd.h"
 
 typedef struct rb_cli {
     rb_evloop_t loop;
     rb_channel_t *chl;
+    atomic_int cons;
     void (*stdincb)(rb_channel_t *, rb_channel_t *);
 } rb_cli_t;
 

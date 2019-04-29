@@ -16,6 +16,7 @@ chat_deal_msg(rb_channel_t *chl, size_t len)
 {
     rb_hash_t *clients = chl->loop->chlist;
     char *buf = rb_buffer_begin(chl->input);
+    rb_buffer_retrieve(chl->input, len);
 
     for (int i = 0; i < clients->hashsize; i++) {
         struct hash_node *h = clients->buckets[i];
@@ -25,7 +26,6 @@ chat_deal_msg(rb_channel_t *chl, size_t len)
             h = h->next;
         }
     }
-    rb_buffer_retrieve(chl->input, len);
 }
 
 /*
@@ -49,6 +49,6 @@ int
 main(void)
 {
     rb_serv_t *serv = rb_serv_init(1);
-    rb_serv_listen(serv, 6001, msgcb);
+    rb_serv_listen(serv, 6001, msgcb, NULL);
     rb_serv_run(serv);
 }

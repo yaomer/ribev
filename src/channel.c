@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "alloc.h"
 #include "channel.h"
@@ -16,26 +17,31 @@ rb_chl_init(rb_evloop_t *loop)
 {
     rb_channel_t *chl = rb_malloc(sizeof(rb_channel_t));
 
+    memset(chl, 0, sizeof(*chl));
     chl->loop = loop;
-    rb_ev_set(&chl->ev, -1, 0, 0);
     chl->input = rb_buffer_init();
     chl->output = rb_buffer_init();
-    rb_chl_set_cb(chl, NULL, NULL, NULL, NULL,
-            NULL, NULL);
+    rb_ev_set(&chl->ev, -1, 0, 0);
 
     return chl;
 }
 
-int
-rb_chl_is_reading(rb_channel_t *chl)
+void
+rb_chl_set_status(rb_channel_t *chl, int status)
 {
-    return chl->ev.events & RB_EV_READ;
+    chl->status = status;
 }
 
-int
-rb_chl_is_writing(rb_channel_t *chl)
+void
+rb_chl_set_flag(rb_channel_t *chl, int flag)
 {
-    return chl->ev.events & RB_EV_WRITE;
+    chl->flag |= flag;
+}
+
+void
+rb_chl_clear_flag(rb_channel_t *chl, int flag)
+{
+    chl->flag &= ~flag;
 }
 
 /*
@@ -99,6 +105,7 @@ __rb_chl_add(void **argv)
     rb_channel_t *chl = (rb_channel_t *)argv[0];
     rb_hash_insert(chl->loop->chlist, chl->ev.ident, chl);
     rb_chl_enable_read(chl);
+    rb_chl_set_status(chl, RB_CONNECTED);
 }
 
 void
@@ -117,25 +124,30 @@ static void
 __rb_chl_del(void **argv)
 {
     rb_channel_t *chl = (rb_channel_t *)argv[0];
-    /* 这两行顺序不能变 */
-    chl->loop->evsel->remove(chl->loop->evop, chl->ev.ident);
-    rb_hash_delete(chl->loop->chlist, chl->ev.ident);
+    int fd = chl->ev.ident;
+    rb_chl_set_status(chl, RB_CLOSED);
+    chl->loop->evsel->remove(chl->loop->evop, fd);
+    rb_hash_delete(chl->loop->chlist, fd);
+    close(fd);
 }
 
 void
 rb_chl_del(rb_channel_t *chl)
 {
-    rb_task_t *t = rb_alloc_task(1);
-    t->callback = __rb_chl_del;
-    t->argv[0] = chl;
-    rb_run_in_loop(chl->loop, t);
+    if (rb_chl_is_connecting(chl))
+        rb_chl_set_status(chl, RB_CLOSED);
+    else {
+        rb_task_t *t = rb_alloc_task(1);
+        t->callback = __rb_chl_del;
+        t->argv[0] = chl;
+        rb_run_in_loop(chl->loop, t);
+    }
 }
 
 void
 rb_free_chl(void *arg)
 {
     rb_channel_t *chl = (rb_channel_t *)arg;
-    close(chl->ev.ident);
     rb_buffer_destroy(&chl->input);
     rb_buffer_destroy(&chl->output);
     rb_free(chl);

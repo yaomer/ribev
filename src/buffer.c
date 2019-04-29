@@ -150,6 +150,10 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
                 rb_buffer_write(chl->output, s + n, len - n);
                 rb_buffer_retrieve(chl->output, len - n);
                 rb_chl_enable_write(chl);
+            } else {
+                rb_chl_clear_flag(chl, RB_SENDING);
+                if (chl->write_complete_cb)
+                    chl->write_complete_cb(chl);
             }
         }
     } else {
@@ -178,6 +182,7 @@ __rb_send_in_loop(void **argv)
 void
 rb_send(rb_channel_t *chl, const char *s, size_t len)
 {
+    rb_chl_set_flag(chl, RB_SENDING);
     if (rb_in_loop_thread(chl->loop))
         rb_send_in_loop(chl, s, len);
     else {
