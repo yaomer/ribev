@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/socket.h>
 #include "event.h"
 #include "buffer.h"
@@ -39,8 +40,7 @@ rb_handle_close(rb_channel_t *chl)
 void
 rb_handle_read(rb_channel_t *chl)
 {
-    int err;
-    ssize_t n = rb_read_fd(chl->input, chl->ev.ident, &err);
+    ssize_t n = rb_read_fd(chl->input, chl->ev.ident);
 
     rb_log_debug("reads %zd bytes from fd=%d", n, chl->ev.ident);
     if (n > 0) {
@@ -65,14 +65,21 @@ rb_handle_write(rb_channel_t *chl)
         rb_log_debug("writes %zd bytes to fd=%d", n, chl->ev.ident);
         if (n >= 0) {
             rb_buffer_retrieve(chl->output, n);
+            /* 写完后，立即停止关注RB_EV_WRITE事件，防止busy loop */
             if (rb_buffer_readable(chl->output) == 0) {
                 rb_chl_disable_write(chl);
                 rb_chl_clear_flag(chl, RB_SENDING);
+_close:
                 if (chl->write_complete_cb)
                     chl->write_complete_cb(chl);
             }
-        } else
-            rb_log_error("write");
+        } else {
+            /* 对端已关闭连接，此时只能丢掉未发完的数据，或许可以使用shutdown() */
+            if (errno == EPIPE)
+                goto _close;
+            else
+                rb_log_error("write");
+        }
     }
 }
 

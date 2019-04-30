@@ -16,7 +16,15 @@
 void
 rb_set_nonblock(int fd)
 {
-    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+    int oflag = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, oflag | O_NONBLOCK);
+}
+
+void
+rb_clear_nonblock(int fd)
+{
+    int oflag = fcntl(fd, F_GETFL, 0);
+    fcntl(fd, F_SETFL, oflag & ~O_NONBLOCK);
 }
 
 void

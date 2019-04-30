@@ -4,6 +4,7 @@
 #define RB_LISTENQ 1024
 
 void rb_set_nonblock(int fd);
+void rb_clear_nonblock(int fd);
 void rb_socketpair(int *fd);
 int rb_connect(int port, const char *addr);
 int rb_listen(int port);

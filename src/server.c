@@ -40,10 +40,9 @@ rb_serv_accept(rb_channel_t *_chl)
     rb_chl_set_status(chl, RB_CONNECTING);
     rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
             rb_handle_close, _chl->msgcb);
+    rb_chl_add(chl);
     if (_chl->acpcb)
         _chl->acpcb(chl);
-    if (rb_chl_is_connecting(chl))
-        rb_chl_add(chl);
 }
 
 /*

@@ -30,8 +30,7 @@ rb_cli_destroy(rb_cli_t **_cli)
 static void
 rb_read_stdin(rb_channel_t *chl)
 {
-    int err;
-    ssize_t n = rb_read_fd(chl->input, chl->ev.ident, &err);
+    ssize_t n = rb_read_fd(chl->input, chl->ev.ident);
     rb_cli_t *cli = ((rb_cli_t *)((char *)chl->loop - offsetof(rb_cli_t, loop)));
 
     if (n > 0) {
@@ -72,7 +71,7 @@ rb_cli_connect_s(rb_cli_t *cli, int ports[], char *addr[], size_t len,
         rb_channel_t *chl = rb_chl_init(&cli->loop);
         chl->ev.ident = rb_connect(ports[i], addr[i]);
         rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
-                rb_handle_close, msgcb[i]);
+                rb_cli_close, msgcb[i]);
         rb_chl_set_concb(chl, concb[i]);
         rb_chl_add(chl);
         if (chl->concb)
@@ -105,5 +104,8 @@ rb_cli_run(rb_cli_t *cli)
 void
 rb_cli_close(rb_channel_t *chl)
 {
-    rb_evloop_quit(chl->loop);
+    if (rb_chlist_size(chl->loop) > 3)
+        rb_handle_close(chl);
+    else
+        rb_evloop_quit(chl->loop);
 }

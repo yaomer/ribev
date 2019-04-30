@@ -101,7 +101,7 @@ rb_buffer_write(rb_buffer_t *b, const char *s, size_t len)
  * 在堆上分配很大的内存。
  */
 ssize_t
-rb_read_fd(rb_buffer_t *b, int fd, int *perr)
+rb_read_fd(rb_buffer_t *b, int fd)
 {
     char extrabuf[65536];
     struct iovec iov[2];
@@ -113,14 +113,14 @@ rb_read_fd(rb_buffer_t *b, int fd, int *perr)
     iov[1].iov_base = extrabuf;
     iov[1].iov_len = sizeof(extrabuf);
 
-    if ((n = readv(fd, iov, 2)) < 0)
-        *perr = errno;
-    else if (n <= writable)
-        b->writeindex += n;
-    else {  /* 将[extrabuf]中的数据追加到[buffer]中 */
-        rb_vector_resize(b->buf, rb_vector_max_size(b->buf));
-        b->writeindex += writable;
-        rb_buffer_write(b, extrabuf, n - writable);
+    if ((n = readv(fd, iov, 2)) > 0) {
+        if (n <= writable)
+            b->writeindex += n;
+        else {  /* 将[extrabuf]中的数据追加到[buffer]中 */
+            rb_vector_resize(b->buf, rb_vector_max_size(b->buf));
+            b->writeindex += writable;
+            rb_buffer_write(b, extrabuf, n - writable);
+        }
     }
 
     return n;
@@ -145,8 +145,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
         if (n > 0) {
             if (n < len) {
                 /* 没写完，将剩余的数据添加到[output buffer]中，并注册RB_EV_WRITE事件，
-                 * 当fd变得可写时，再继续发送。
-                 */
+                 * 当fd变得可写时，再继续发送 */
                 rb_buffer_write(chl->output, s + n, len - n);
                 rb_buffer_retrieve(chl->output, len - n);
                 rb_chl_enable_write(chl);
@@ -159,8 +158,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
     } else {
         /* 如果有新到来的消息时，[output buffer]中还有未发完的数据，就将
          * 新到来的消息追加到它的末尾，之后统一发送。(这样才能保证接收方
-         * 接收到消息的正确性)。
-         */
+         * 接收到消息的正确性) */
         rb_buffer_move_forward(chl->output, len);
         rb_buffer_write(chl->output, s, len);
         rb_buffer_retrieve(chl->output, len);

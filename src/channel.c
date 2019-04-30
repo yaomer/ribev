@@ -124,24 +124,24 @@ static void
 __rb_chl_del(void **argv)
 {
     rb_channel_t *chl = (rb_channel_t *)argv[0];
-    int fd = chl->ev.ident;
-    rb_chl_set_status(chl, RB_CLOSED);
-    chl->loop->evsel->remove(chl->loop->evop, fd);
-    rb_hash_delete(chl->loop->chlist, fd);
-    close(fd);
+    if (rb_chl_is_sending(chl)) {
+        rb_chl_set_write_complete_cb(chl, rb_chl_del);
+    } else {
+        int fd = chl->ev.ident;
+        rb_chl_set_status(chl, RB_CLOSED);
+        chl->loop->evsel->remove(chl->loop->evop, fd);
+        rb_hash_delete(chl->loop->chlist, fd);
+        close(fd);
+    }
 }
 
 void
 rb_chl_del(rb_channel_t *chl)
 {
-    if (rb_chl_is_connecting(chl))
-        rb_chl_set_status(chl, RB_CLOSED);
-    else {
-        rb_task_t *t = rb_alloc_task(1);
-        t->callback = __rb_chl_del;
-        t->argv[0] = chl;
-        rb_run_in_loop(chl->loop, t);
-    }
+    rb_task_t *t = rb_alloc_task(1);
+    t->callback = __rb_chl_del;
+    t->argv[0] = chl;
+    rb_run_in_loop(chl->loop, t);
 }
 
 void

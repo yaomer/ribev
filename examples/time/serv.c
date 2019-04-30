@@ -8,19 +8,11 @@
 #include <unistd.h>
 
 static void
-write_complete_cb(rb_channel_t *chl)
-{
-    close(chl->ev.ident);
-    rb_free_chl(chl);
-}
-
-static void
 acpcb(rb_channel_t *chl)
 {
     int32_t tm = (int32_t)time(NULL);
     rb_send(chl, (void *)&tm, sizeof(tm));
-    rb_chl_set_status(chl, RB_CLOSED);
-    rb_chl_set_write_complete_cb(chl, write_complete_cb);
+    chl->closecb(chl);
 }
 
 int
