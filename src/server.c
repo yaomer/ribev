@@ -10,6 +10,7 @@
 #include "net.h"
 #include "lock.h"
 #include "queue.h"
+#include "user.h"
 #include "log.h"
 
 rb_serv_t *
@@ -35,7 +36,7 @@ rb_serv_accept(rb_channel_t *_chl)
     rb_evthr_t *evthr = rb_evll_get_nextloop(serv->evll);
     rb_evloop_t *loop = evthr->loop;
 
-    rb_channel_t *chl = rb_chl_init(loop);
+    rb_channel_t *chl = rb_chl_init(loop, _chl->user);
     chl->ev.ident = rb_accept(_chl->ev.ident);
     rb_chl_set_status(chl, RB_CONNECTING);
     rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
@@ -51,10 +52,11 @@ rb_serv_accept(rb_channel_t *_chl)
 void
 rb_serv_listen_ports(rb_serv_t *serv, int ports[], size_t len,
         void (*msgcb[])(rb_channel_t *),
-        void (*acpcb[])(rb_channel_t *))
+        void (*acpcb[])(rb_channel_t *),
+        rb_user_t user[])
 {
     for (int i = 0; i < len; i++) {
-        rb_channel_t *chl = rb_chl_init(&serv->mloop);
+        rb_channel_t *chl = rb_chl_init(&serv->mloop, user[i]);
         chl->ev.ident = rb_listen(ports[i]);
         rb_chl_set_cb(chl, rb_handle_event, rb_serv_accept, NULL,
                 rb_handle_close, msgcb[i]);
@@ -68,11 +70,12 @@ rb_serv_listen_ports(rb_serv_t *serv, int ports[], size_t len,
  */
 void
 rb_serv_listen(rb_serv_t *serv, int port, void (*msgcb)(rb_channel_t *),
-        void (*acpcb)(rb_channel_t *))
+        void (*acpcb)(rb_channel_t *),
+        rb_user_t user)
 {
     void (*mcb[])(rb_channel_t *) = { msgcb };
     void (*acb[])(rb_channel_t *) = { acpcb };
-    rb_serv_listen_ports(serv, &port, 1, mcb, acb);
+    rb_serv_listen_ports(serv, &port, 1, mcb, acb, &user);
 }
 
 void

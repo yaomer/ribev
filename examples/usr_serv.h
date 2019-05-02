@@ -10,5 +10,7 @@
 #include "../src/timer.h"
 #include "../src/task.h"
 #include "../src/util.h"
+#include "../src/alloc.h"
+#include "../src/user.h"
 
 #endif /* _USR_SERV_H */

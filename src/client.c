@@ -4,6 +4,7 @@
 #include "evloop.h"
 #include "channel.h"
 #include "buffer.h"
+#include "user.h"
 #include "net.h"
 #include "log.h"
 
@@ -49,7 +50,9 @@ rb_read_stdin(rb_channel_t *chl)
 static void
 rb_cli_set_stdin(rb_cli_t *cli)
 {
-    rb_channel_t *in = rb_chl_init(&cli->loop);
+    rb_user_t user;
+    user.init = NULL;
+    rb_channel_t *in = rb_chl_init(&cli->loop, user);
     in->ev.ident = 0;
     rb_chl_set_cb(in, rb_handle_event, rb_read_stdin, NULL,
             rb_cli_close, NULL);
@@ -64,11 +67,12 @@ rb_cli_connect_s(rb_cli_t *cli, int ports[], char *addr[], size_t len,
         void (*msgcb[])(rb_channel_t *),
         void (*concb[])(rb_channel_t *),
         size_t index,  /* 将stdin绑定到连接ports[index]的chl上 */
-        void (*stdincb)(rb_channel_t *, rb_channel_t *))
+        void (*stdincb)(rb_channel_t *, rb_channel_t *),
+        rb_user_t user[])
 {
     cli->stdincb = stdincb;
     for (int i = 0; i < len; i++) {
-        rb_channel_t *chl = rb_chl_init(&cli->loop);
+        rb_channel_t *chl = rb_chl_init(&cli->loop, user[i]);
         chl->ev.ident = rb_connect(ports[i], addr[i]);
         rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
                 rb_cli_close, msgcb[i]);
@@ -87,11 +91,12 @@ void
 rb_cli_connect(rb_cli_t *cli, int port, char *addr,
         void (*msgcb)(rb_channel_t *),
         void (*concb)(rb_channel_t *),
-        void (*stdincb)(rb_channel_t *, rb_channel_t *))
+        void (*stdincb)(rb_channel_t *, rb_channel_t *),
+        rb_user_t user)
 {
     void (*mcb[])(rb_channel_t *) = { msgcb };
     void (*ccb[])(rb_channel_t *) = { concb };
-    rb_cli_connect_s(cli, &port, &addr, 1, mcb, ccb, 0, stdincb);
+    rb_cli_connect_s(cli, &port, &addr, 1, mcb, ccb, 0, stdincb, &user);
 }
 
 void

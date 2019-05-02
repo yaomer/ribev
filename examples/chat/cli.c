@@ -29,7 +29,8 @@ stdincb(rb_channel_t *from, rb_channel_t *to)
 int
 main(void)
 {
+    rb_user_t user = { 0 };
     rb_cli_t *cli = rb_cli_init();
-    rb_cli_connect(cli, 6001, "127.0.0.1", msgcb, NULL, stdincb);
+    rb_cli_connect(cli, 6001, "127.0.0.1", msgcb, NULL, stdincb, user);
     rb_cli_run(cli);
 }

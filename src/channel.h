@@ -4,6 +4,7 @@
 #include <stdatomic.h>
 #include "fwd.h"
 #include "event.h"
+#include "user.h"
 
 /* status */
 #define RB_CONNECTING   1   /* 连接已建立，但还未添加到loop中 */
@@ -19,6 +20,7 @@ typedef struct rb_channel {
     rb_event_t ev;
     rb_buffer_t *input;
     rb_buffer_t *output;
+    rb_user_t user;
     /* 事件分发器 */
     void (*eventcb)(rb_channel_t *);
     void (*readcb)(rb_channel_t *);
@@ -54,7 +56,7 @@ typedef struct rb_channel {
 #define rb_chl_is_writing(chl) ((chl)->ev.events & RB_EV_WRITE)
 #define rb_chl_is_sending(chl) ((chl)->flag & RB_SENDING)
 
-rb_channel_t *rb_chl_init(rb_evloop_t *loop);
+rb_channel_t *rb_chl_init(rb_evloop_t *loop, rb_user_t user);
 void rb_chl_set_status(rb_channel_t *chl, int status);
 void rb_chl_set_flag(rb_channel_t *chl, int flag);
 void rb_chl_clear_flag(rb_channel_t *chl, int flag);

@@ -56,7 +56,7 @@ rb_buffer_retrieve(rb_buffer_t *b, size_t len)
  * 新的内存地址中，代价只会更大。
  */
 void
-rb_buffer_move_forward(rb_buffer_t *b, size_t len)
+rb_buffer_make_space(rb_buffer_t *b, size_t len)
 {
     size_t readable = rb_buffer_readable(b);
     size_t writeable = rb_buffer_writeable(b);
@@ -159,7 +159,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
         /* 如果有新到来的消息时，[output buffer]中还有未发完的数据，就将
          * 新到来的消息追加到它的末尾，之后统一发送。(这样才能保证接收方
          * 接收到消息的正确性) */
-        rb_buffer_move_forward(chl->output, len);
+        rb_buffer_make_space(chl->output, len);
         rb_buffer_write(chl->output, s, len);
         rb_buffer_retrieve(chl->output, len);
     }

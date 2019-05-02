@@ -10,10 +10,11 @@
 #include "hash.h"
 #include "vector.h"
 #include "task.h"
+#include "user.h"
 #include "log.h"
 
 rb_channel_t *
-rb_chl_init(rb_evloop_t *loop)
+rb_chl_init(rb_evloop_t *loop, rb_user_t user)
 {
     rb_channel_t *chl = rb_malloc(sizeof(rb_channel_t));
 
@@ -22,6 +23,10 @@ rb_chl_init(rb_evloop_t *loop)
     chl->input = rb_buffer_init();
     chl->output = rb_buffer_init();
     rb_ev_set(&chl->ev, -1, 0, 0);
+    if (user.init) {
+        user.data = user.init();
+        chl->user = user;
+    }
 
     return chl;
 }
@@ -150,5 +155,7 @@ rb_free_chl(void *arg)
     rb_channel_t *chl = (rb_channel_t *)arg;
     rb_buffer_destroy(&chl->input);
     rb_buffer_destroy(&chl->output);
+    if (chl->user.data)
+        chl->user.dealloc(chl->user.data);
     rb_free(chl);
 }

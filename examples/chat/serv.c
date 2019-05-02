@@ -48,7 +48,8 @@ msgcb(rb_channel_t *chl)
 int
 main(void)
 {
+    rb_user_t user = { 0 };
     rb_serv_t *serv = rb_serv_init(1);
-    rb_serv_listen(serv, 6001, msgcb, NULL);
+    rb_serv_listen(serv, 6001, msgcb, NULL, user);
     rb_serv_run(serv);
 }

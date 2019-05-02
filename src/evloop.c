@@ -13,6 +13,7 @@
 #include "lock.h"
 #include "task.h"
 #include "util.h"
+#include "user.h"
 #include "log.h"
 
 /*
@@ -87,7 +88,9 @@ rb_wakeup_read(rb_channel_t *chl)
 static void
 rb_wakeup_add(rb_evloop_t *loop)
 {
-    rb_channel_t *chl = rb_chl_init(loop);
+    rb_user_t user;
+    user.init = NULL;
+    rb_channel_t *chl = rb_chl_init(loop, user);
 
     chl->ev.ident = loop->wakefd[0];
     rb_chl_set_cb(chl, rb_handle_event, rb_handle_read, rb_handle_write,
