@@ -15,6 +15,7 @@
 #include "evloop.h"
 #include "alloc.h"
 #include "task.h"
+#include "log.h"
 
 /*
  * [buffer]初始化时的大小，由于我们在rb_read_fd()中巧妙
@@ -154,6 +155,11 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
                 if (chl->write_complete_cb)
                     chl->write_complete_cb(chl);
             }
+        } else {
+            if (errno != EAGAIN
+             && errno != EWOULDBLOCK
+             && errno != EINTR)
+                rb_log_error("write");
         }
     } else {
         /* 如果有新到来的消息时，[output buffer]中还有未发完的数据，就将

@@ -50,7 +50,10 @@ rb_handle_read(rb_channel_t *chl)
         if (chl->closecb)
             chl->closecb(chl);
     } else {
-        rb_handle_error(chl);
+        if (errno != EAGAIN
+         && errno != EWOULDBLOCK
+         && errno != EINTR)
+            rb_handle_error(chl);
     }
 }
 
@@ -77,7 +80,9 @@ _close:
             /* 对端已关闭连接，此时只能丢掉未发完的数据，或许可以使用shutdown() */
             if (errno == EPIPE)
                 goto _close;
-            else
+            if (errno != EAGAIN
+             && errno != EWOULDBLOCK
+             && errno != EINTR)
                 rb_log_error("write");
         }
     }

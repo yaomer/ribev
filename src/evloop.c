@@ -199,12 +199,7 @@ rb_evloop_run(rb_evloop_t *loop)
         } else if (nevents > 0) {
             rb_run_io(loop);
         } else {
-            if (errno == EINTR
-             || errno == EWOULDBLOCK
-             || errno == EPROTO
-             || errno == ECONNABORTED)
-                rb_log_warn("dispatch");
-            else
+            if (errno != EINTR)
                 rb_log_error("dispatch");
         }
         rb_run_task(loop);

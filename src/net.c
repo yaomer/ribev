@@ -146,8 +146,15 @@ rb_accept(int listenfd)
     socklen_t clilen;
 
     clilen = sizeof(cliaddr);
-    if ((connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen)) < 0)
-        rb_log_error("listenfd=%d accept fd=%d", listenfd, connfd);
+_again:
+    if ((connfd = accept(listenfd, (struct sockaddr *)&cliaddr, &clilen)) < 0) {
+        if (errno == EINTR)
+            goto _again;
+        if (errno != EWOULDBLOCK /* BSD */
+         && errno != EPROTO  /* SERV4 */
+         && errno != ECONNABORTED)  /* POSIX */
+            rb_log_error("listenfd=%d accept fd=%d", listenfd, connfd);
+    }
 
     return connfd;
 }

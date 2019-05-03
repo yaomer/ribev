@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 static void
 msgcb(rb_channel_t *chl)
@@ -53,13 +54,22 @@ dealloc(void *data)
     rb_free(data);
 }
 
+static void
+sig_int(int signo)
+{
+    printf("Good bye!\n");
+    exit(1);
+}
+
 int
 main(void)
 {
     rb_user_t user;
     user.init = init;
     user.dealloc = dealloc;
+    signal(SIGINT, sig_int);
     rb_serv_t *serv = rb_serv_init(1);
     rb_serv_listen(serv, 8080, msgcb, NULL, user);
+    printf("server is running at http://localhost:8080\n");
     rb_serv_run(serv);
 }
