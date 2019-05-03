@@ -8,12 +8,16 @@ enum {
     HTTP_ERROR,
 };
 
+#define HTTP_ALIVE 001
+
 typedef struct {
     int status;
+    int flag;
     char method[8];
     char url[255];
-    char version[8];
+    char version[12];
     char host[255];
+    char conn[32];
 } HTTP_REQUEST;
 
 void http_parse_line(rb_channel_t *chl, size_t len);

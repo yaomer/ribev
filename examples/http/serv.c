@@ -14,7 +14,9 @@ msgcb(rb_channel_t *chl)
 {
     HTTP_REQUEST *http = (HTTP_REQUEST *)chl->user.data;
 
+    /* printf("client request:\n%s", rb_buffer_begin(chl->input)); */
     while (rb_buffer_readable(chl->input) >= 2) {
+        /* 每次返回一行，即[*\r\n] */
         int crlf = rb_find_crlf(chl->input);
         if (crlf >= 0) {
             switch (http->status) {
@@ -36,7 +38,8 @@ msgcb(rb_channel_t *chl)
             break;
     }
     http_response(chl);
-    chl->closecb(chl);
+    if (!(http->flag & HTTP_ALIVE))
+        chl->closecb(chl);
 }
 
 static void *
@@ -57,7 +60,7 @@ dealloc(void *data)
 static void
 sig_int(int signo)
 {
-    printf("Good bye!\n");
+    printf("Good Bye!\n");
     exit(1);
 }
 

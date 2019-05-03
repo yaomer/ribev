@@ -11,9 +11,7 @@
 static void
 http_header(rb_buffer_t *buf)
 {
-    char *s = "HTTP/1.1 200 OK\r\n";
-    rb_buffer_write(buf, s, strlen(s));
-    s = "Ribev-Server\r\n";
+    char *s = "Ribev-Server\r\n";
     rb_buffer_write(buf, s, strlen(s));
     s = "Content-Type: text/html\r\n";
     rb_buffer_write(buf, s, strlen(s));
@@ -22,16 +20,27 @@ http_header(rb_buffer_t *buf)
 }
 
 static void
+http_ok(rb_buffer_t *buf)
+{
+    char *s = "HTTP/1.1 200 OK\r\n";
+    rb_buffer_write(buf, s, strlen(s));
+    http_header(buf);
+}
+
+static void
 http_not_found(rb_buffer_t *buf)
 {
     char *s = "HTTP/1.1 404 NOT FOUND\r\n";
     rb_buffer_write(buf, s, strlen(s));
-    s = "Ribev-Server\r\n";
+    http_header(buf);
+}
+
+void
+http_unimplemented(rb_buffer_t *buf)
+{
+    char *s = "HTTP/1.1 501 METHOD NOT IMPLEMENTED\r\n";
     rb_buffer_write(buf, s, strlen(s));
-    s = "Content-Type: text/html\r\n";
-    rb_buffer_write(buf, s, strlen(s));
-    s = "\r\n";
-    rb_buffer_write(buf, s, strlen(s));
+    http_header(buf);
 }
 
 /*
@@ -89,22 +98,35 @@ http_parse_header(rb_channel_t *chl, size_t len)
     HTTP_REQUEST *req = (HTTP_REQUEST *)chl->user.data;
     char *p = rb_buffer_begin(chl->input);
     char *ep = p + len;
+
+    if (strcmp(p, "\r\n") == 0) {
+        /* 头部解析完毕 */
+        req->status = HTTP_OK;
+        return;
+    } else
+        req->status = HTTP_HEADER;
+
     while (p < ep && (*p == ' ' || *p == '\t'))
         p++;
 
     int i = 0;
-    while (p < ep) {
-        if (strcasecmp(p, "Host:") == 0) {
-            p += 5;
-            while (p < ep && !isspace(*p))
-                req->host[i++] = *p++;
-            req->host[i] = '\0';
-        } else {
-            /* ignore */
-            break;
-        }
+    if (strncasecmp(p, "Host:", 5) == 0) {
+        p += 5;
+        while (p < ep && (*p == ' ' || *p == '\t'))
+            p++;
+        while (p < ep && !isspace(*p))
+            req->host[i++] = *p++;
+        req->host[i] = '\0';
+    } else if (strncasecmp(p, "Connection:", 11) == 0) {
+        p += 11;
+        while (p < ep && (*p == ' ' || *p == '\t'))
+            p++;
+        while (p < ep && !isspace(*p))
+            req->conn[i++] = *p++;
+        req->conn[i] = '\0';
+    } else {
+        ; /* ignore */
     }
-    req->status = HTTP_OK;
 }
 
 static void
@@ -112,7 +134,7 @@ fcat(rb_buffer_t *buf, const char *name)
 {
     int fd = open(name, O_RDONLY);
     if (fd > 0) {
-        http_header(buf);
+        http_ok(buf);
         rb_read_fd(buf, fd);
     } else
         http_not_found(buf);
@@ -127,10 +149,12 @@ http_response(rb_channel_t *chl)
 
     switch (req->status) {
     case HTTP_OK:
+        if (strcasecmp(req->conn, "Keep-Alive") == 0)
+            req->flag |= HTTP_ALIVE;
         if (strcasecmp(req->method, "GET") == 0) {
             fcat(buf, req->url);
         } else
-            ; /* 不支持 */
+            http_unimplemented(buf);
         break;
     case HTTP_ERROR:
         http_not_found(buf);
@@ -139,11 +163,12 @@ http_response(rb_channel_t *chl)
         break;
     }
 
-    if (req->status) {
+    if (req->status == HTTP_OK
+     || req->status == HTTP_ERROR) {
         char *s = rb_buffer_begin(buf);
         size_t len = rb_buffer_readable(buf);
         rb_send(chl, s, len);
-        req->status = 0;
+        req->status = HTTP_LINE;
     }
     rb_buffer_destroy(&buf);
 }
