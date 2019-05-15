@@ -20,27 +20,40 @@ http_header(rb_buffer_t *buf)
 }
 
 static void
-http_ok(rb_buffer_t *buf)
+http_send(rb_channel_t *chl, rb_buffer_t *buf)
+{
+    char *s = rb_buffer_begin(buf);
+    size_t len = rb_buffer_readable(buf);
+    printf("send %zu\n", len);
+    rb_send(chl, s, len);
+    rb_buffer_retrieve(buf, len);
+}
+
+static void
+http_ok(rb_channel_t *chl, rb_buffer_t *buf)
 {
     char *s = "HTTP/1.1 200 OK\r\n";
     rb_buffer_write(buf, s, strlen(s));
     http_header(buf);
+    http_send(chl, buf);
 }
 
 static void
-http_not_found(rb_buffer_t *buf)
+http_not_found(rb_channel_t *chl, rb_buffer_t *buf)
 {
     char *s = "HTTP/1.1 404 NOT FOUND\r\n";
     rb_buffer_write(buf, s, strlen(s));
     http_header(buf);
+    http_send(chl, buf);
 }
 
 void
-http_unimplemented(rb_buffer_t *buf)
+http_unimplemented(rb_channel_t *chl, rb_buffer_t *buf)
 {
     char *s = "HTTP/1.1 501 METHOD NOT IMPLEMENTED\r\n";
     rb_buffer_write(buf, s, strlen(s));
     http_header(buf);
+    http_send(chl, buf);
 }
 
 /*
@@ -58,15 +71,17 @@ http_parse_line(rb_channel_t *chl, size_t len)
         p++;
     /* 请求方法 */
     int i = 0;
-    while (p < ep && !isspace(*p))
+    int j = sizeof(req->method) - 1;
+    while (p < ep && i < j && !isspace(*p))
         req->method[i++] = *p++;
     req->method[i] = '\0';
     while (p < ep && (*p == ' ' || *p == '\t'))
         p++;
     /* url */
     i = 0;
+    j = sizeof(req->url) - 1;
     req->url[i++] = '.';
-    while (p < ep && !isspace(*p))
+    while (p < ep && i < j && !isspace(*p))
         req->url[i++] = *p++;
     req->url[i] = '\0';
     if (strcmp(req->url, "./") == 0)
@@ -83,7 +98,8 @@ http_parse_line(rb_channel_t *chl, size_t len)
         p++;
     /* version */
     i = 0;
-    while (p < ep && !isspace(*p))
+    j = sizeof(req->version) - 1;
+    while (p < ep && i < j && !isspace(*p))
         req->version[i++] = *p++;
     req->version[i] = '\0';
     req->status = HTTP_HEADER;
@@ -109,19 +125,21 @@ http_parse_header(rb_channel_t *chl, size_t len)
     while (p < ep && (*p == ' ' || *p == '\t'))
         p++;
 
-    int i = 0;
+    int i = 0, j;
     if (strncasecmp(p, "Host:", 5) == 0) {
         p += 5;
         while (p < ep && (*p == ' ' || *p == '\t'))
             p++;
-        while (p < ep && !isspace(*p))
+        j = sizeof(req->host) - 1;
+        while (p < ep && i < j && !isspace(*p))
             req->host[i++] = *p++;
         req->host[i] = '\0';
     } else if (strncasecmp(p, "Connection:", 11) == 0) {
         p += 11;
         while (p < ep && (*p == ' ' || *p == '\t'))
             p++;
-        while (p < ep && !isspace(*p))
+        j = sizeof(req->conn) - 1;
+        while (p < ep && i < j && !isspace(*p))
             req->conn[i++] = *p++;
         req->conn[i] = '\0';
     } else {
@@ -130,14 +148,15 @@ http_parse_header(rb_channel_t *chl, size_t len)
 }
 
 static void
-fcat(rb_buffer_t *buf, const char *name)
+fcat(rb_channel_t *chl, rb_buffer_t *buf, const char *name)
 {
     int fd = open(name, O_RDONLY);
     if (fd > 0) {
-        http_ok(buf);
-        rb_read_fd(buf, fd);
+        http_ok(chl, buf);
+        while (rb_read_fd(buf, fd) > 0)
+            http_send(chl, buf);
     } else
-        http_not_found(buf);
+        http_not_found(chl, buf);
     close(fd);
 }
 
@@ -152,23 +171,17 @@ http_response(rb_channel_t *chl)
         if (strcasecmp(req->conn, "Keep-Alive") == 0)
             req->flag |= HTTP_ALIVE;
         if (strcasecmp(req->method, "GET") == 0) {
-            fcat(buf, req->url);
+            fcat(chl, buf, req->url);
         } else
-            http_unimplemented(buf);
+            http_unimplemented(chl, buf);
+        req->status = HTTP_LINE;
         break;
     case HTTP_ERROR:
-        http_not_found(buf);
+        http_not_found(chl, buf);
+        req->status = HTTP_LINE;
         break;
     default:
         break;
-    }
-
-    if (req->status == HTTP_OK
-     || req->status == HTTP_ERROR) {
-        char *s = rb_buffer_begin(buf);
-        size_t len = rb_buffer_readable(buf);
-        rb_send(chl, s, len);
-        req->status = HTTP_LINE;
     }
     rb_buffer_destroy(&buf);
 }

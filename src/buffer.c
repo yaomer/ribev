@@ -148,7 +148,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
                 /* 没写完，将剩余的数据添加到[output buffer]中，并注册RB_EV_WRITE事件，
                  * 当fd变得可写时，再继续发送 */
                 rb_buffer_write(chl->output, s + n, len - n);
-                rb_buffer_retrieve(chl->output, len - n);
+                /* rb_buffer_retrieve(chl->output, len - n); */
                 rb_chl_enable_write(chl);
             } else {
                 rb_chl_clear_flag(chl, RB_SENDING);
@@ -167,7 +167,7 @@ rb_send_in_loop(rb_channel_t *chl, const char *s, size_t len)
          * 接收到消息的正确性) */
         rb_buffer_make_space(chl->output, len);
         rb_buffer_write(chl->output, s, len);
-        rb_buffer_retrieve(chl->output, len);
+        /* rb_buffer_retrieve(chl->output, len); */
     }
 }
 
